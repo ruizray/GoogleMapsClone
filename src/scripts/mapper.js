@@ -1,7 +1,13 @@
 const Graph = require("node-dijkstra");
 const txml = require("txml");
 
-var parsed
+var parsed;
+var Nodes;
+export function returnNodesList(){
+	return Nodes
+
+}
+
 class NodesList {
 	constructor() {
 		this.Nodes = new Map();
@@ -112,7 +118,6 @@ class Bounds {
 		this.maxLon = maxLon;
 		this.minLat = minLat;
 		this.minLon = minLon;
-	
 
 		this.getCenter = function (maxLat, minLat, maxLon, minLon) {
 			var midLat = (+maxLat + +minLat) / 2;
@@ -122,12 +127,12 @@ class Bounds {
 	}
 }
 
-export default function load() {
-	
-	var xmlDoc;
+export function load(e) {
+	console.log(e);
 	var reader = new FileReader();
-	var file = this.files[0];
-	var Nodes = new NodesList();
+	var file = e.target.files[0];
+	console.log(file);
+	Nodes = new NodesList();
 	reader.onloadend = function () {
 		parsed = txml.parse(this.result);
 		getNodes(Nodes);
@@ -158,8 +163,6 @@ function getNodes(Nodes) {
 	console.log("FOOTWAYS: " + Nodes.numFootways());
 
 	console.log(Nodes);
-
-	
 }
 
 function addNodeTest(node, Nodes) {
