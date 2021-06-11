@@ -3,11 +3,44 @@ const txml = require("txml");
 
 var parsed;
 var Nodes;
-export function returnNodesList(){
-	return Nodes
+var bounds;
+var tempBuildings = {};
+var tempNodes = {};
+var tempFootways = {};
+var tempPointNodes = [];
+var tempAdjList = new Map();
 
+
+export async function returnValues(){
+	return [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList]
+}
+export function returnNodesList() {
+	return Nodes;
 }
 
+export function returnBounds() {
+	return bounds;
+}
+
+export function getBuildings() {
+	return tempBuildings;
+}
+
+export function getPointNodes(){
+	return tempPointNodes
+}
+
+export function getAdjList(){
+	return tempAdjList
+}
+
+export function getFootways(){
+	return tempFootways
+}
+
+export function getNodesList2(){
+	return tempNodes
+}
 class NodesList {
 	constructor() {
 		this.Nodes = new Map();
@@ -105,8 +138,8 @@ class NodesList {
 		this.getBuildingCoordinates = function (building) {
 			var temp = [];
 
-			temp.push(this.Nodes.get(building).lon);
-			temp.push(this.Nodes.get(building).lat);
+			temp.push(+this.Nodes.get(building).lon);
+			temp.push(+this.Nodes.get(building).lat);
 			return temp;
 		};
 	}
@@ -118,11 +151,11 @@ class Bounds {
 		this.maxLon = maxLon;
 		this.minLat = minLat;
 		this.minLon = minLon;
-
+		this.center = 0;
 		this.getCenter = function (maxLat, minLat, maxLon, minLon) {
 			var midLat = (+maxLat + +minLat) / 2;
 			var midLon = (+maxLon + +minLon) / 2;
-			this.center = [midLat, midLon];
+			this.center = [midLon, midLat];
 		};
 	}
 }
@@ -135,14 +168,16 @@ export function load(e) {
 	Nodes = new NodesList();
 	reader.onloadend = function () {
 		parsed = txml.parse(this.result);
+
+		console.log(parsed);
 		getNodes(Nodes);
 	};
 	reader.readAsText(file);
+	return [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList]
 }
 
 function getNodes(Nodes) {
-	var bounds;
-	getBounds(parsed[1].children[0], bounds);
+	getBounds(parsed[1].children[0]);
 	for (var i = 0; i < parsed[1].children.length; i++) {
 		var tagName = parsed[1].children[i].tagName;
 		if (tagName == "node") {
@@ -151,7 +186,7 @@ function getNodes(Nodes) {
 			for (var j = 0; j < parsed[1].children[i].children.length; j++) {
 				var kVal = parsed[1].children[i].children[j].attributes.k;
 				var vVal = parsed[1].children[i].children[j].attributes.v;
-				if (kVal == "highway" && vVal == "footway") {
+				if (vVal == "footway") {
 					addFootway(parsed[1].children[i], Nodes);
 				} else if (kVal == "building" && vVal == "university") {
 					addBuilding(parsed[1].children[i], Nodes);
@@ -159,39 +194,71 @@ function getNodes(Nodes) {
 			}
 		}
 	}
-	console.log("NODES: " + Nodes.numNodes());
-	console.log("FOOTWAYS: " + Nodes.numFootways());
-
+	console.log(tempFootways);
+	console.log("NODES: " + Object.keys(tempNodes).length);
+	console.log("FOOTWAYS: " + Object.keys(tempFootways).length);
+	console.log(tempAdjList);
+	console.log(tempBuildings);
 	console.log(Nodes);
 }
 
 function addNodeTest(node, Nodes) {
+	tempNodes[node.id] = { lat: node.lat, lon: node.lon };
+	var temp = new Map();
+	tempAdjList.set(node.id, temp);
 	Nodes.addNode(node.id, node.lat, node.lon);
+}
+
+function getEdges(id) {
+	var temp = tempFootways[id];
+
+	tempPointNodes.push(temp[0]);
+	tempPointNodes.push(temp[temp.length - 1]);
+	for (var j = 0; j < temp.length - 1; j++) {
+		var weight = distBetween2Points(tempNodes[temp[j]].lat, tempNodes[temp[j]].lon, tempNodes[temp[j + 1]].lat, tempNodes[temp[j + 1]].lon);
+
+		tempAdjList.get(temp[j]).set(temp[+j + 1], weight);
+		tempAdjList.get(temp[+j + 1]).set(temp[j], weight);
+	}
 }
 
 function addFootway(footway, Nodes) {
 	for (var i = 0; i < footway.children.length; i++) {
 		var child = footway.children[i];
 		if (child.tagName == "nd") {
+			if (tempFootways[footway.attributes.id] === undefined) {
+				tempFootways[footway.attributes.id] = [];
+			} else {
+				tempFootways[footway.attributes.id].push(child.attributes.ref);
+			}
 			Nodes.addFootway(footway.attributes.id, child.attributes.ref);
 		}
 	}
+	getEdges(footway.attributes.id);
 	Nodes.getEdges(footway.attributes.id);
 }
 
 function addBuilding(building, Nodes) {
 	var totalLong = 0;
 	var totalLat = 0;
+	var totalLong2 = 0;
+	var totalLat2 = 0;
 	var totalNodes = 0;
 	var id = building.attributes.id;
 	var fullname = "";
 	var abbrev = "?";
-	for (var i = 0; i < building.children.length; i++) {
+	var length = building.children.length;
+	for (var i = 0; i < length; i++) {
 		var child = building.children[i];
 		if (child.tagName == "nd") {
 			var tempNode = Nodes.returnNode(child.attributes.ref);
 			totalLat = +tempNode.lat + totalLat;
 			totalLong = +tempNode.lon + totalLong;
+
+			var tempNode2 = tempNodes[child.attributes.ref];
+			totalLat2 = +tempNode2.lat + totalLat;
+			totalLong2 = +tempNode2.lon + totalLong;
+
 			totalNodes++;
 		} else if (child.tagName == "tag" && child.attributes.k == "name") {
 			fullname = child.attributes.v;
@@ -201,6 +268,7 @@ function addBuilding(building, Nodes) {
 	var long = totalLong / totalNodes;
 
 	Nodes.addBuilding(fullname, id, lat, long);
+	tempBuildings[fullname] = { id: id, lat: lat, long: long };
 }
 
 function distBetween2Points(lat1, long1, lat2, long2) {
@@ -220,7 +288,31 @@ function distBetween2Points(lat1, long1, lat2, long2) {
 	return dist;
 }
 
-function getBounds(node, bounds) {
+function getBounds(node) {
 	bounds = new Bounds(node.attributes.maxlat, node.attributes.maxlon, node.attributes.minlat, node.attributes.minlon);
 	bounds.getCenter(node.attributes.maxlat, node.attributes.minlat, node.attributes.maxlon, node.attributes.minlon);
+	console.log(bounds);
 }
+
+
+export async function getNearestNode (building, tempPointNodes, tempBuildings, tempNodes) {
+
+console.log(building, tempPointNodes, tempBuildings, tempNodes)
+	var pathID = 0;
+	var nearest = Number.MAX_SAFE_INTEGER;
+	for (var i = 0; i < tempPointNodes.length; i++) {
+		var dist = distBetween2Points(
+			tempBuildings[building].lat,
+			tempBuildings[building].lon,
+			tempNodes[tempPointNodes[i]].lat,
+			tempNodes[tempPointNodes[i]].lon
+		);
+		
+		if (dist < nearest) {
+			nearest = dist;
+			pathID = tempPointNodes[i];
+		}
+	}
+	console.log(pathID)
+	return pathID;
+};
