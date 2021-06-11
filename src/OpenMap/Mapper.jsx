@@ -46,11 +46,26 @@ const Mapper = () => {
 	const [To, setTo] = useState("");
 
 	useEffect(() => {
-		if (Buildings && AdjList && PointNodes && Footways && Nodes) {
+		if (Buildings && AdjList && PointNodes && Footways && Nodes && To && From) {
 			console.log("Do something after counter has changed", Buildings, AdjList, PointNodes, Footways, Nodes);
 			setEnabled(false);
+			var rout22 = new Graph(AdjList);
+
+			var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
+			var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
+			var path = rout22.path(id1, id2, { cost: true });
+			var coordinates = [];
+			if (path.path === undefined) {
+				alert("No Path Found");
+			} else {
+				for (var i = 0; i < path.path.length; i++) {
+					coordinates.push(getBuildingCoordinates(Nodes, path.path[i]));
+				}
+				console.log(coordinates);
+				setCoordinates(coordinates);
+			}
 		}
-	}, [Buildings, AdjList, PointNodes, Footways, Nodes, From]);
+	}, [Buildings, AdjList, PointNodes, Footways, Nodes, From, To]);
 
 	const handleToClick = (event, index) => {
 		console.log(index, event);
@@ -64,23 +79,7 @@ const Mapper = () => {
 	const handleLoad = (e) => {
 		load(e);
 	};
-	const handleClick = () => {
-		console.log(AdjList);
-		var rout22 = new Graph(AdjList);
-		console.log(rout22);
-		var id1 = getNearestNode("Thomas Beckham Hall (TBH)", PointNodes, Buildings, Nodes);
-		var id2 = getNearestNode("Science Engineering South (SES)", PointNodes, Buildings, Nodes);
-		var path = rout22.path(id1, id2, { cost: true });
-		console.log(AdjList.get(id1));
-		console.log(path, rout22, id1, id2);
-		var coordinates = [];
-
-		for (var i = 0; i < path.path.length; i++) {
-			coordinates.push(getBuildingCoordinates(Nodes, path.path[i]));
-		}
-		console.log(coordinates);
-		setCoordinates(coordinates);
-	};
+	const handleClick = () => {};
 
 	const getNodesList = async () => {
 		const [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList] = await returnValues();
