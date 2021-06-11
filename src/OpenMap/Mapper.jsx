@@ -53,9 +53,10 @@ const Mapper = () => {
 
 			var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
 			var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
+			console.log(AdjList.get(id1), AdjList.get(id2))
 			var path = rout22.path(id1, id2, { cost: true });
 			var coordinates = [];
-			if (path.path === undefined) {
+			if (path === undefined || path.path === undefined) {
 				alert("No Path Found");
 			} else {
 				for (var i = 0; i < path.path.length; i++) {
