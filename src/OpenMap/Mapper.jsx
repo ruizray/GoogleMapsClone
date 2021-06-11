@@ -3,7 +3,7 @@ import ReactMapboxGl, { Source, GeoJSONLayer, Layer } from "react-mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Graph from "node-dijkstra";
 import { Button, Slider, Typography } from "@material-ui/core";
-import { load,returnBounds, getBuildings, getAdjList , getNodesList2} from "../scripts/mapper";
+import { load,returnBounds, getBuildingCoordinates} from "../scripts/mapper";
 import { makeStyles } from "@material-ui/core/styles";
 import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
@@ -57,14 +57,21 @@ const Mapper = () => {
 		load(e)
 	};
 	const handleClick=()=>{
-		console.log(Buildings, AdjList, PointNodes, Footways, Nodes)
+		console.log(AdjList)
 		var rout22 = new Graph(AdjList);
-		
+		console.log(rout22)
 		var id1 = getNearestNode("Thomas Beckham Hall (TBH)" , PointNodes, Buildings, Nodes);
 		var id2 = getNearestNode("Science Engineering South (SES)",   PointNodes, Buildings, Nodes);
 		var path = rout22.path(id1, id2, { cost: true });
+		console.log(AdjList.get(id1))
 		console.log(path, rout22, id1, id2);
 		var coordinates = [];
+		
+		for (var i = 0; i < path.path.length; i++) {
+			coordinates.push(getBuildingCoordinates(Nodes, path.path[i]));
+		}
+		console.log(coordinates);
+		setCoordinates(coordinates);
 	}
 
 	const getNodesList  = async () => {
@@ -72,20 +79,11 @@ const Mapper = () => {
 		 setNodes(tempNodes);
 		const center = returnBounds().center;
 		setBuildings(tempBuildings)
-		console.log(Buildings)
 		setAdjList(tempAdjList)
-
 		setPointNodes(tempPointNodes);
 		setFootways(tempFootways)
 		setCenter(center);
-		console.log(AdjList);
 
-
-		// for (var i = 0; i < path.path.length; i++) {
-		// 	coordinates.push(Nodes.getBuildingCoordinates(path.path[i]));
-		// }
-		// console.log(coordinates);
-		// setCoordinates(coordinates);
 	};
 
 	const handleSliderChange = (event, newValue) => {
