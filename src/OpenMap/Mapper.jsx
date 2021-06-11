@@ -3,7 +3,7 @@ import ReactMapboxGl, { Source, GeoJSONLayer, Layer } from "react-mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Graph from "node-dijkstra";
 import { Button, Slider, Typography } from "@material-ui/core";
-import { load,returnBounds, getBuildingCoordinates} from "../scripts/mapper";
+import { load, returnBounds, getBuildingCoordinates } from "../scripts/mapper";
 import { makeStyles } from "@material-ui/core/styles";
 import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
@@ -12,7 +12,7 @@ import ListItemText from "@material-ui/core/ListItemText";
 import Divider from "@material-ui/core/Divider";
 import InboxIcon from "@material-ui/icons/Inbox";
 import DraftsIcon from "@material-ui/icons/Drafts";
-import { getNearestNode, returnValues } from './../scripts/mapper';
+import { getNearestNode, returnValues } from "./../scripts/mapper";
 
 const Map = ReactMapboxGl({
 	accessToken: "pk.eyJ1IjoicnVpenJheSIsImEiOiJja29naXN5ZTEwcmpyMm9ucnBoaW90bzBiIn0._TowTB5Zp7nGWcPPnGMoUQ",
@@ -23,12 +23,14 @@ const useStyles = makeStyles((theme) => ({
 		width: "100%",
 		maxWidth: 360,
 		backgroundColor: theme.palette.background.paper,
+		overflow: "scroll",
+		maxHeight: "300px",
 	},
 }));
 
 const Mapper = () => {
 	const classes = useStyles();
-	const [selectedIndex, setSelectedIndex] = useState(1);
+	const [From, setFrom] = useState();
 	const [lng, setLng] = useState(-87.647374);
 	const [lat, setLat] = useState(41.865794);
 	const [center, setCenter] = useState([lng, lat]);
@@ -41,49 +43,54 @@ const Mapper = () => {
 	const [Coordinates, setCoordinates] = useState([]);
 	const [Enabled, setEnabled] = useState(true);
 
-	useEffect(() => {
-		if(Buildings &&  AdjList &&  PointNodes &&  Footways && Nodes){
-			console.log('Do something after counter has changed', Buildings, AdjList, PointNodes, Footways, Nodes);
-		setEnabled(false)
-		}
-		
-	 }, [Buildings, AdjList, PointNodes, Footways, Nodes]);
+	const [To, setTo] = useState("");
 
-	const handleListItemClick = (event, index) => {
-		setSelectedIndex(index);
+	useEffect(() => {
+		if (Buildings && AdjList && PointNodes && Footways && Nodes) {
+			console.log("Do something after counter has changed", Buildings, AdjList, PointNodes, Footways, Nodes);
+			setEnabled(false);
+		}
+	}, [Buildings, AdjList, PointNodes, Footways, Nodes, From]);
+
+	const handleToClick = (event, index) => {
+		console.log(index, event);
+		setTo(index);
+	};
+	const handleFromClick = (event, index) => {
+		console.log(index, event);
+		setFrom(index);
 	};
 
 	const handleLoad = (e) => {
-		load(e)
+		load(e);
 	};
-	const handleClick=()=>{
-		console.log(AdjList)
+	const handleClick = () => {
+		console.log(AdjList);
 		var rout22 = new Graph(AdjList);
-		console.log(rout22)
-		var id1 = getNearestNode("Thomas Beckham Hall (TBH)" , PointNodes, Buildings, Nodes);
-		var id2 = getNearestNode("Science Engineering South (SES)",   PointNodes, Buildings, Nodes);
+		console.log(rout22);
+		var id1 = getNearestNode("Thomas Beckham Hall (TBH)", PointNodes, Buildings, Nodes);
+		var id2 = getNearestNode("Science Engineering South (SES)", PointNodes, Buildings, Nodes);
 		var path = rout22.path(id1, id2, { cost: true });
-		console.log(AdjList.get(id1))
+		console.log(AdjList.get(id1));
 		console.log(path, rout22, id1, id2);
 		var coordinates = [];
-		
+
 		for (var i = 0; i < path.path.length; i++) {
 			coordinates.push(getBuildingCoordinates(Nodes, path.path[i]));
 		}
 		console.log(coordinates);
 		setCoordinates(coordinates);
-	}
+	};
 
-	const getNodesList  = async () => {
+	const getNodesList = async () => {
 		const [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList] = await returnValues();
-		 setNodes(tempNodes);
+		setNodes(tempNodes);
 		const center = returnBounds().center;
-		setBuildings(tempBuildings)
-		setAdjList(tempAdjList)
+		setBuildings(tempBuildings);
+		setAdjList(tempAdjList);
 		setPointNodes(tempPointNodes);
-		setFootways(tempFootways)
+		setFootways(tempFootways);
 		setCenter(center);
-
 	};
 
 	const handleSliderChange = (event, newValue) => {
@@ -112,16 +119,38 @@ const Mapper = () => {
 		},
 	};
 
-	const renderList = () => {
+	const renderFrom = () => {
 		console.log(Buildings);
-
-		return (
-			<>
-				<ListItem button selected={selectedIndex === 0} onClick={(event) => handleListItemClick(event, 0)}>
-					<ListItemText primary='Inbox' />
+		var count = -1;
+		if (!Buildings) {
+			return;
+		}
+		return Object.keys(Buildings).map((key, value) => {
+			count++;
+			console.log(count);
+			return (
+				<ListItem key={key} button selected={From === key} onClick={(event) => handleFromClick(event, key)}>
+					<ListItemText primary={key} />
 				</ListItem>
-			</>
-		);
+			);
+		});
+	};
+
+	const renderTo = () => {
+		console.log(Buildings);
+		var count = -1;
+		if (!Buildings) {
+			return;
+		}
+		return Object.keys(Buildings).map((key, value) => {
+			count++;
+			console.log(count);
+			return (
+				<ListItem key={key} button selected={To === key} onClick={(event) => handleToClick(event, key)}>
+					<ListItemText primary={key} />
+				</ListItem>
+			);
+		});
 	};
 
 	return (
@@ -166,7 +195,9 @@ const Mapper = () => {
 				</label>
 			</form>
 			<Button onClick={() => getNodesList()}>Click Here</Button>
-			<Button disabled={Enabled} onClick={() => handleClick()}>Click Here</Button>
+			<Button disabled={Enabled} onClick={() => handleClick()}>
+				Click Here
+			</Button>
 			<Typography id='discrete-slider' gutterBottom>
 				Zoom Level
 			</Typography>
@@ -181,23 +212,21 @@ const Mapper = () => {
 				min={1}
 				max={22}
 			/>
-			<div className={classes.root}>
-				<List component='nav' aria-label='main mailbox folders'>
-					{renderList()}
-
-					<ListItem button selected={selectedIndex === 1} onClick={(event) => handleListItemClick(event, 1)}>
-						<ListItemText primary='Drafts' />
-					</ListItem>
-				</List>
-				<Divider />
-				<List component='nav' aria-label='secondary mailbox folder'>
-					<ListItem button selected={selectedIndex === 2} onClick={(event) => handleListItemClick(event, 2)}>
-						<ListItemText primary='Trash' />
-					</ListItem>
-					<ListItem button selected={selectedIndex === 3} onClick={(event) => handleListItemClick(event, 3)}>
-						<ListItemText primary='Spam' />
-					</ListItem>
-				</List>
+			<div class='row'>
+				<div className='col-md-6'>
+					<div className={classes.root}>
+						<List component='nav' aria-label='main mailbox folders'>
+							{renderFrom()}
+						</List>
+					</div>
+				</div>
+				<div className='col-md-6'>
+					<div className={classes.root}>
+						<List component='nav' aria-label='main mailbox folders'>
+							{renderTo()}
+						</List>
+					</div>
+				</div>
 			</div>
 		</div>
 	);
