@@ -33,12 +33,21 @@ const Mapper = () => {
 	const [lat, setLat] = useState(41.865794);
 	const [center, setCenter] = useState([lng, lat]);
 	const [zoom, setZoom] = useState(15);
-	const [Nodes, setNodes] = useState({});
-	const [Buildings, setBuildings] = useState({});
-	const [Footways, setFootways] = useState({});
-	const [AdjList, setAdjList] = useState({});
-	const [PointNodes, setPointNodes] = useState({});
+	const [Nodes, setNodes] = useState();
+	const [Buildings, setBuildings] = useState();
+	const [Footways, setFootways] = useState();
+	const [AdjList, setAdjList] = useState();
+	const [PointNodes, setPointNodes] = useState();
 	const [Coordinates, setCoordinates] = useState([]);
+	const [Enabled, setEnabled] = useState(true);
+
+	useEffect(() => {
+		if(Buildings &&  AdjList &&  PointNodes &&  Footways && Nodes){
+			console.log('Do something after counter has changed', Buildings, AdjList, PointNodes, Footways, Nodes);
+		setEnabled(false)
+		}
+		
+	 }, [Buildings, AdjList, PointNodes, Footways, Nodes]);
 
 	const handleListItemClick = (event, index) => {
 		setSelectedIndex(index);
@@ -47,28 +56,30 @@ const Mapper = () => {
 	const handleLoad = (e) => {
 		load(e)
 	};
+	const handleClick=()=>{
+		console.log(Buildings, AdjList, PointNodes, Footways, Nodes)
+		var rout22 = new Graph(AdjList);
+		
+		var id1 = getNearestNode("Thomas Beckham Hall (TBH)" , PointNodes, Buildings, Nodes);
+		var id2 = getNearestNode("Science Engineering South (SES)",   PointNodes, Buildings, Nodes);
+		var path = rout22.path(id1, id2, { cost: true });
+		console.log(path, rout22, id1, id2);
+		var coordinates = [];
+	}
 
 	const getNodesList  = async () => {
 		const [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList] = await returnValues();
-	console.log(tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList)
 		 setNodes(tempNodes);
 		const center = returnBounds().center;
-
-		setBuildings(tempBuildings);
+		setBuildings(tempBuildings)
 		console.log(Buildings)
 		setAdjList(tempAdjList)
-		console.log(AdjList)
+
 		setPointNodes(tempPointNodes);
 		setFootways(tempFootways)
 		setCenter(center);
 		console.log(AdjList);
-		var rout22 = new Graph(AdjList);
-		
-		var id1 = await getNearestNode("Thomas Beckham Hall (TBH)" , tempPointNodes, tempBuildings, tempNodes);
-		var id2 = getNearestNode("Science Engineering South (SES)",  tempPointNodes, tempBuildings, tempNodes);
-		var path = rout22.path(id1, id2, { cost: true });
-		console.log(path, rout22, id1, id2);
-		var coordinates = [];
+
 
 		// for (var i = 0; i < path.path.length; i++) {
 		// 	coordinates.push(Nodes.getBuildingCoordinates(path.path[i]));
@@ -157,6 +168,7 @@ const Mapper = () => {
 				</label>
 			</form>
 			<Button onClick={() => getNodesList()}>Click Here</Button>
+			<Button disabled={Enabled} onClick={() => handleClick()}>Click Here</Button>
 			<Typography id='discrete-slider' gutterBottom>
 				Zoom Level
 			</Typography>

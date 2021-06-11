@@ -268,7 +268,7 @@ function addBuilding(building, Nodes) {
 	var long = totalLong / totalNodes;
 
 	Nodes.addBuilding(fullname, id, lat, long);
-	tempBuildings[fullname] = { id: id, lat: lat, long: long };
+	tempBuildings[fullname] = { id: id, lat: lat, lon: long };
 }
 
 function distBetween2Points(lat1, long1, lat2, long2) {
@@ -297,17 +297,21 @@ function getBounds(node) {
 
 export async function getNearestNode (building, tempPointNodes, tempBuildings, tempNodes) {
 
-console.log(building, tempPointNodes, tempBuildings, tempNodes)
+
 	var pathID = 0;
 	var nearest = Number.MAX_SAFE_INTEGER;
 	for (var i = 0; i < tempPointNodes.length; i++) {
+		console.log(tempBuildings[building].lat,
+			tempBuildings[building].lon,
+			tempNodes[tempPointNodes[i]].lat,
+			tempNodes[tempPointNodes[i]].lon)
 		var dist = distBetween2Points(
 			tempBuildings[building].lat,
 			tempBuildings[building].lon,
 			tempNodes[tempPointNodes[i]].lat,
 			tempNodes[tempPointNodes[i]].lon
 		);
-		
+		console.log(dist)
 		if (dist < nearest) {
 			nearest = dist;
 			pathID = tempPointNodes[i];
