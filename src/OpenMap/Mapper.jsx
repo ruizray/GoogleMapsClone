@@ -1,5 +1,5 @@
-import React, { useRef, useEffect, useState } from "react";
-import ReactMapboxGl, { Source, GeoJSONLayer, Layer } from "react-mapbox-gl";
+import React, { useEffect, useState } from "react";
+import ReactMapboxGl, { Source, Layer } from "react-mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Graph from "node-dijkstra";
 import { Button, Slider, Typography } from "@material-ui/core";
@@ -7,11 +7,7 @@ import { load, returnBounds, getBuildingCoordinates } from "../scripts/mapper";
 import { makeStyles } from "@material-ui/core/styles";
 import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
-import ListItemIcon from "@material-ui/core/ListItemIcon";
 import ListItemText from "@material-ui/core/ListItemText";
-import Divider from "@material-ui/core/Divider";
-import InboxIcon from "@material-ui/icons/Inbox";
-import DraftsIcon from "@material-ui/icons/Drafts";
 import { getNearestNode, returnValues } from "./../scripts/mapper";
 
 const Map = ReactMapboxGl({
@@ -41,19 +37,20 @@ const Mapper = () => {
 	const [AdjList, setAdjList] = useState();
 	const [PointNodes, setPointNodes] = useState();
 	const [Coordinates, setCoordinates] = useState([]);
+	const [footwaysCoordinates, setFootwaysCoordinates] = useState([]);
 	const [Enabled, setEnabled] = useState(true);
 
 	const [To, setTo] = useState("");
 
 	useEffect(() => {
-		if (Buildings && AdjList && PointNodes && Footways && Nodes && To && From) {
+		if (Buildings && AdjList && PointNodes && Footways && Nodes && To && From && footwaysCoordinates) {
 			console.log("Do something after counter has changed", Buildings, AdjList, PointNodes, Footways, Nodes);
 			setEnabled(false);
 			var rout22 = new Graph(AdjList);
 
 			var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
 			var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
-			console.log(AdjList.get(id1), AdjList.get(id2))
+			console.log(AdjList.get(id1), AdjList.get(id2));
 			var path = rout22.path(id1, id2, { cost: true });
 			var coordinates = [];
 			if (path === undefined || path.path === undefined) {
@@ -66,7 +63,7 @@ const Mapper = () => {
 				setCoordinates(coordinates);
 			}
 		}
-	}, [Buildings, AdjList, PointNodes, Footways, Nodes, From, To]);
+	}, [Buildings, AdjList, PointNodes, Footways, Nodes, From, To, footwaysCoordinates]);
 
 	const handleToClick = (event, index) => {
 		console.log(index, event);
@@ -83,7 +80,10 @@ const Mapper = () => {
 	const handleClick = () => {};
 
 	const getNodesList = async () => {
-		const [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList] = await returnValues();
+		const [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList, footwaysCoordinates] = await returnValues();
+		console.log(tempFootways);
+		console.log(footwaysCoordinates);
+		setFootwaysCoordinates(footwaysCoordinates);
 		setNodes(tempNodes);
 		const center = returnBounds().center;
 		setBuildings(tempBuildings);
@@ -118,16 +118,27 @@ const Mapper = () => {
 			},
 		},
 	};
+	const footways = {
+		type: "geojson",
+		data: {
+			type: "FeatureCollection",
+			features: [...footwaysCoordinates],
+		},
 
+		// 	type: "Feature",
+		// 	properties: {},
+		// 	geometry: {
+		// 		type: "LineString",
+		// 		coordinates: [...footwaysCoordinates],
+		// 	},
+		// },
+	};
+	console.log(footways)
 	const renderFrom = () => {
-		console.log(Buildings);
-		var count = -1;
 		if (!Buildings) {
 			return;
 		}
 		return Object.keys(Buildings).map((key, value) => {
-			count++;
-			console.log(count);
 			return (
 				<ListItem key={key} button selected={From === key} onClick={(event) => handleFromClick(event, key)}>
 					<ListItemText primary={key} />
@@ -137,14 +148,10 @@ const Mapper = () => {
 	};
 
 	const renderTo = () => {
-		console.log(Buildings);
-		var count = -1;
 		if (!Buildings) {
 			return;
 		}
 		return Object.keys(Buildings).map((key, value) => {
-			count++;
-			console.log(count);
 			return (
 				<ListItem key={key} button selected={To === key} onClick={(event) => handleToClick(event, key)}>
 					<ListItemText primary={key} />
@@ -165,6 +172,20 @@ const Mapper = () => {
 				center={center}
 				onDragEnd={(map, e) => handleDragEnd(map, e)}>
 				<Source id='route' geoJsonSource={list} />
+				<Source id='footways' geoJsonSource={footways} />
+				<Layer
+					id='route4'
+					type='line'
+					sourceId='footways'
+					layout={{
+						"line-cap": "round",
+					}}
+					paint={{
+						"line-width": 3,
+						"line-dasharray": [0, 2],
+						"line-color": "blue",
+					}}
+				/>
 				<Layer
 					id='route2'
 					type='circle'
@@ -212,7 +233,7 @@ const Mapper = () => {
 				min={1}
 				max={22}
 			/>
-			<div class='row'>
+			<div className='row'>
 				<div className='col-md-6'>
 					<div className={classes.root}>
 						<List component='nav' aria-label='main mailbox folders'>

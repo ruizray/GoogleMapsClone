@@ -1,4 +1,3 @@
-const Graph = require("node-dijkstra");
 const txml = require("txml");
 
 var parsed;
@@ -6,23 +5,18 @@ var Nodes;
 var bounds;
 var tempBuildings = {};
 var tempNodes = {};
+var footwaysCoordinates = [];
 var tempFootways = {};
 var tempPointNodes = [];
 var tempAdjList = new Map();
 
 export async function returnValues() {
-	return [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList];
+	return [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList, footwaysCoordinates];
 }
 
 export function returnBounds() {
 	return bounds;
-
 }
-
-
-
-
-
 
 class Bounds {
 	constructor(maxLat, maxLon, minLat, minLon) {
@@ -65,11 +59,12 @@ function getNodes(Nodes) {
 			for (var j = 0; j < parsed[1].children[i].children.length; j++) {
 				var kVal = parsed[1].children[i].children[j].attributes.k;
 				var vVal = parsed[1].children[i].children[j].attributes.v;
-				if (vVal === "footway") {
-					addFootway(parsed[1].children[i], Nodes);
-				} else if (kVal == "building" && vVal == "university") {
+				 if (kVal === "building" && vVal === "university") {
 					addBuilding(parsed[1].children[i], Nodes);
 				}
+				else  {
+					addFootway(parsed[1].children[i], Nodes);
+				} 
 			}
 		}
 	}
@@ -82,13 +77,13 @@ function addNodeTest(node, Nodes) {
 	tempNodes[node.id] = { lat: node.lat, lon: node.lon };
 	var temp = new Map();
 	tempAdjList.set(node.id, temp);
-	
 }
 
 function getEdges(id) {
 	var temp = tempFootways[id];
 	tempPointNodes.push(temp[0]);
 	tempPointNodes.push(temp[temp.length - 1]);
+
 	for (var j = 0; j < temp.length - 1; j++) {
 		var weight = distBetween2Points(tempNodes[temp[j]].lat, tempNodes[temp[j]].lon, tempNodes[temp[j + 1]].lat, tempNodes[temp[j + 1]].lon);
 
@@ -98,19 +93,29 @@ function getEdges(id) {
 }
 
 function addFootway(footway) {
+	var coordinates = [];
 	for (var i = 0; i < footway.children.length; i++) {
 		var child = footway.children[i];
 		if (child.tagName === "nd") {
 			if (!tempFootways[footway.attributes.id]) {
 				tempFootways[footway.attributes.id] = [];
 			}
-			tempFootways[footway.attributes.id].push(child.attributes.ref);
+			coordinates.push([tempNodes[child.attributes.ref].lon, tempNodes[child.attributes.ref].lat]);
 
+			tempFootways[footway.attributes.id].push(child.attributes.ref);
 		}
 	}
 
-	getEdges(footway.attributes.id);
+	var obj = {
+		type: "Feature",
+		geometry: {
+			type: "LineString",
+			coordinates: [...coordinates],
+		},
+	};
 
+	footwaysCoordinates.push(obj);
+	getEdges(footway.attributes.id);
 }
 
 function addBuilding(building) {
@@ -125,13 +130,9 @@ function addBuilding(building) {
 	for (var i = 0; i < length; i++) {
 		var child = building.children[i];
 		if (child.tagName == "nd") {
-		
-			
-
 			var tempNode = tempNodes[child.attributes.ref];
-totalLat = +tempNode.lat + totalLat;
+			totalLat = +tempNode.lat + totalLat;
 			totalLong = +tempNode.lon + totalLong;
-
 
 			totalNodes++;
 		} else if (child.tagName === "tag" && child.attributes.k === "name") {
@@ -140,7 +141,6 @@ totalLat = +tempNode.lat + totalLat;
 	}
 	var lat = totalLat / totalNodes;
 	var long = totalLong / totalNodes;
-
 
 	tempBuildings[fullname] = { id, lat, lon: long };
 }
@@ -188,7 +188,7 @@ export function getNearestNode(building, tempPointNodes, tempBuildings, tempNode
 	return pathID;
 }
 
-export function getBuildingCoordinates(Nodes, building){
+export function getBuildingCoordinates(Nodes, building) {
 	var temp = [];
 
 	temp.push(+Nodes[building].lon);
