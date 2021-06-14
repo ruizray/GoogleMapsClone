@@ -38,9 +38,9 @@ class Bounds {
 
 function getBuildings2(ways) {
 	console.log(ways);
-	_.map(ways, (elem) => {
+	_.forEach(ways, (elem) => {
 		if (_.find(elem.tag, (child) => child._attributes.k === "building")) {
-			_.map(elem.tag, (child) => {
+			_.forEach(elem.tag, (child) => {
 				if (child._attributes.k === "name") {
 					var totalLong = 0;
 					var totalLat = 0;
@@ -48,7 +48,7 @@ function getBuildings2(ways) {
 					var totalNodes = 0;
 					var id = elem._attributes.id;
 
-					_.map(elem.nd, (nd) => {
+					_.forEach(elem.nd, (nd) => {
 						var tempNode = tempNodes[nd._attributes.ref];
 						totalLat = +tempNode.lat + totalLat;
 						totalLong = +tempNode.lon + totalLong;
@@ -78,7 +78,7 @@ export function load(e) {
 
 		console.log(parsed);
 		getNodes(Nodes);
-		//getBuildings2(test.osm[0].way);
+		getBuildings2(test.osm[0].way);
 	};
 	reader.readAsText(file);
 	return [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList];

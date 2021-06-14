@@ -166,7 +166,7 @@ const Mapper = () => {
 			<Map
 				style='mapbox://styles/mapbox/streets-v11'
 				containerStyle={{
-					height: "400px",
+					height: "600px",
 					width: "100%",
 				}}
 				zoom={[zoom]}
