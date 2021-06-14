@@ -47,13 +47,14 @@ const Mapper = () => {
 			console.log("Do something after counter has changed", Buildings, AdjList, PointNodes, Footways, Nodes);
 			setEnabled(false);
 			var rout22 = new Graph(AdjList);
-
+			console.log(rout22);
 			var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
 			var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
 			console.log(AdjList.get(id1), AdjList.get(id2));
 			var path = rout22.path(id1, id2, { cost: true });
 			var coordinates = [];
-			if (path === undefined || path.path === undefined) {
+			console.log(path);
+			if (!path.path  || !path) {
 				alert("No Path Found");
 			} else {
 				for (var i = 0; i < path.path.length; i++) {
@@ -133,7 +134,7 @@ const Mapper = () => {
 		// 	},
 		// },
 	};
-	console.log(footways)
+	console.log(footways);
 	const renderFrom = () => {
 		if (!Buildings) {
 			return;
@@ -182,8 +183,8 @@ const Mapper = () => {
 					}}
 					paint={{
 						"line-width": 3,
-						"line-dasharray": [0, 2],
-						"line-color": "blue",
+
+						"line-color": ["get", "color"],
 					}}
 				/>
 				<Layer

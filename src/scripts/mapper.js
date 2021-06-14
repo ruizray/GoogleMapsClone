@@ -1,13 +1,16 @@
 const txml = require("txml");
-
+var _ = require("lodash");
 var parsed;
 var Nodes;
+var buildings = {};
+var test;
 var bounds;
 var tempBuildings = {};
 var tempNodes = {};
 var footwaysCoordinates = [];
 var tempFootways = {};
 var tempPointNodes = [];
+var PathNodes = {};
 var tempAdjList = new Map();
 
 export async function returnValues() {
@@ -33,6 +36,35 @@ class Bounds {
 	}
 }
 
+function getBuildings2(ways) {
+	console.log(ways);
+	_.map(ways, (elem) => {
+		if (_.find(elem.tag, (child) => child._attributes.k === "building")) {
+			_.map(elem.tag, (child) => {
+				if (child._attributes.k === "name") {
+					var totalLong = 0;
+					var totalLat = 0;
+
+					var totalNodes = 0;
+					var id = elem._attributes.id;
+
+					_.map(elem.nd, (nd) => {
+						var tempNode = tempNodes[nd._attributes.ref];
+						totalLat = +tempNode.lat + totalLat;
+						totalLong = +tempNode.lon + totalLong;
+						totalNodes++;
+					});
+					var lat = totalLat / totalNodes;
+					var long = totalLong / totalNodes;
+
+					buildings[child._attributes.v] = { id, lat, lon: long };
+				}
+			});
+		}
+	});
+	console.log(buildings);
+}
+
 export function load(e) {
 	console.log(e);
 	var reader = new FileReader();
@@ -41,9 +73,12 @@ export function load(e) {
 
 	reader.onloadend = function () {
 		parsed = txml.parse(this.result);
+		test = txml.simplifyLostLess(parsed);
+		console.log(test);
 
 		console.log(parsed);
 		getNodes(Nodes);
+		//getBuildings2(test.osm[0].way);
 	};
 	reader.readAsText(file);
 	return [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList];
@@ -59,24 +94,56 @@ function getNodes(Nodes) {
 			for (var j = 0; j < parsed[1].children[i].children.length; j++) {
 				var kVal = parsed[1].children[i].children[j].attributes.k;
 				var vVal = parsed[1].children[i].children[j].attributes.v;
-				 if (kVal === "building" && vVal === "university") {
+				if (kVal === "building") {
 					addBuilding(parsed[1].children[i], Nodes);
-				}
-				else  {
+				} else if (kVal == "highway") {
 					addFootway(parsed[1].children[i], Nodes);
-				} 
+				}
 			}
 		}
 	}
 
 	console.log("NODES: " + Object.keys(tempNodes).length);
 	console.log("FOOTWAYS: " + Object.keys(tempFootways).length);
+	console.log(PathNodes);
 }
 
 function addNodeTest(node, Nodes) {
 	tempNodes[node.id] = { lat: node.lat, lon: node.lon };
-	var temp = new Map();
-	tempAdjList.set(node.id, temp);
+	const tempMap = new Map();
+	tempAdjList.set(node.id, tempMap);
+}
+
+function checkSameNodes(NodeRef, id) {
+	var footwaysToCheck = PathNodes[NodeRef];
+
+	for (var i = 0; i < footwaysToCheck.length; i++) {
+		if (footwaysToCheck[i] === id) {
+		} else {
+			var weight;
+			var temp = tempFootways[footwaysToCheck[i]];
+			var nearest = Number.MAX_SAFE_INTEGER;
+			var pathID = 0;
+			for (var j = 0; j < temp.length; j++) {
+				var current = temp[j];
+				if (current === NodeRef) {
+	
+				} else {
+					weight = distBetween2Points(tempNodes[current].lat, tempNodes[current].lon, tempNodes[NodeRef].lat, tempNodes[NodeRef].lon);
+					if (weight < nearest) {
+						nearest = weight;
+						pathID = current;
+					}
+				}
+			}
+			if (weight === 0) {
+			} else {
+				tempAdjList.get(pathID).set(NodeRef, weight);
+
+				tempAdjList.get(NodeRef).set(pathID, weight);
+			}
+		}
+	}
 }
 
 function getEdges(id) {
@@ -85,29 +152,47 @@ function getEdges(id) {
 	tempPointNodes.push(temp[temp.length - 1]);
 
 	for (var j = 0; j < temp.length - 1; j++) {
-		var weight = distBetween2Points(tempNodes[temp[j]].lat, tempNodes[temp[j]].lon, tempNodes[temp[j + 1]].lat, tempNodes[temp[j + 1]].lon);
+		var current = temp[j];
+		var next = temp[+j + 1];
+		if (current === next) {
+			return;
+		} else {
+			checkSameNodes(current, id);
+			var weight = distBetween2Points(tempNodes[current].lat, tempNodes[current].lon, tempNodes[next].lat, tempNodes[next].lon);
 
-		tempAdjList.get(temp[j]).set(temp[+j + 1], weight);
-		tempAdjList.get(temp[+j + 1]).set(temp[j], weight);
+			tempAdjList.get(current).set(next, weight);
+
+			tempAdjList.get(next).set(current, weight);
+		}
 	}
 }
 
 function addFootway(footway) {
 	var coordinates = [];
-	for (var i = 0; i < footway.children.length; i++) {
+	var length = footway.children.length;
+	for (var i = 0; i < length; i++) {
 		var child = footway.children[i];
 		if (child.tagName === "nd") {
-			if (!tempFootways[footway.attributes.id]) {
-				tempFootways[footway.attributes.id] = [];
+			var id = footway.attributes.id;
+			if (!tempFootways[id]) {
+				tempFootways[id] = [];
+			}
+			if (!PathNodes[child.attributes.ref]) {
+				PathNodes[child.attributes.ref] = [];
 			}
 			coordinates.push([tempNodes[child.attributes.ref].lon, tempNodes[child.attributes.ref].lat]);
-
-			tempFootways[footway.attributes.id].push(child.attributes.ref);
+			tempFootways[id].push(child.attributes.ref);
+			PathNodes[child.attributes.ref].push(id);
 		}
 	}
 
+	const randomColor = Math.floor(Math.random() * 16777215).toString(16);
+
 	var obj = {
 		type: "Feature",
+		properties: {
+			color: "#" + randomColor, // red
+		},
 		geometry: {
 			type: "LineString",
 			coordinates: [...coordinates],
