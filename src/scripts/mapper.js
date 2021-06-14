@@ -1,7 +1,9 @@
 const txml = require("txml");
 var _ = require("lodash");
 var parsed;
-var Nodes;
+var Nodes = {};
+var Paths = {};
+var EndNodes = [];
 var buildings = {};
 var test;
 var bounds;
@@ -38,18 +40,18 @@ class Bounds {
 
 function getBuildings2(ways) {
 	console.log(ways);
-	_.forEach(ways, (elem) => {
+
+	var test = _.remove(ways, (elem) => {
 		if (_.find(elem.tag, (child) => child._attributes.k === "building")) {
 			_.forEach(elem.tag, (child) => {
 				if (child._attributes.k === "name") {
 					var totalLong = 0;
 					var totalLat = 0;
-
 					var totalNodes = 0;
 					var id = elem._attributes.id;
 
 					_.forEach(elem.nd, (nd) => {
-						var tempNode = tempNodes[nd._attributes.ref];
+						var tempNode = Nodes[nd._attributes.ref];
 						totalLat = +tempNode.lat + totalLat;
 						totalLong = +tempNode.lon + totalLong;
 						totalNodes++;
@@ -57,12 +59,54 @@ function getBuildings2(ways) {
 					var lat = totalLat / totalNodes;
 					var long = totalLong / totalNodes;
 
-					buildings[child._attributes.v] = { id, lat, lon: long };
+					buildings[child._attributes.v] = { id, lngLat: [long, lat] };
 				}
 			});
+			return elem;
 		}
 	});
+	console.log(test, ways);
 	console.log(buildings);
+}
+function getNodes2(nodes) {
+	console.log(nodes);
+	_.forEach(nodes, (node) => {
+		var temp = _.find(node.tag, (child) => child._attributes.k === "name") || "";
+		if (!temp) {
+			temp = "";
+		} else {
+			temp = temp._attributes.v;
+		}
+
+		Nodes[node._attributes.id] = { name: temp, lngLat: [node._attributes.lon, node._attributes.lat] };
+	});
+
+	console.log(Nodes);
+}
+
+function getPaths(ways) {
+	console.log(ways);
+	var totalNodes = {}
+	_.remove(ways, (path) => {
+		if (_.find(path.tag, (child) => child._attributes.k === "highway" || child._attributes.k === "amenity")) {
+			var coordinates = [];
+
+			_.forEach(path.nd, (nd) => {
+				var nodeReference = nd._attributes.ref;
+				coordinates.push(Nodes[nodeReference].lngLat);
+				if (!totalNodes[nodeReference]) {
+					totalNodes[nodeReference] = [];
+				}
+				totalNodes[nodeReference].push(path._attributes.id)
+			});
+			EndNodes.push(coordinates[0] , coordinates[coordinates.length-1])
+			Paths[path._attributes.id] = { coordinates };
+
+			return path;
+		}
+	});
+	console.log(totalNodes)
+	console.log(Paths);
 }
 
 export function load(e) {
@@ -78,7 +122,9 @@ export function load(e) {
 
 		console.log(parsed);
 		getNodes(Nodes);
+		getNodes2(test.osm[0].node);
 		getBuildings2(test.osm[0].way);
+		getPaths(test.osm[0].way);
 	};
 	reader.readAsText(file);
 	return [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList];
@@ -127,7 +173,6 @@ function checkSameNodes(NodeRef, id) {
 			for (var j = 0; j < temp.length; j++) {
 				var current = temp[j];
 				if (current === NodeRef) {
-	
 				} else {
 					weight = distBetween2Points(tempNodes[current].lat, tempNodes[current].lon, tempNodes[NodeRef].lat, tempNodes[NodeRef].lon);
 					if (weight < nearest) {

@@ -99,13 +99,12 @@ const Mapper = () => {
 		console.log(zoom);
 	};
 	const handleDragEnd = (map, e) => {
-		console.log(map, e);
-		console.log(map.getZoom());
+
 		var center = map.getCenter();
 		setLat(center.lat);
 		setLng(center.lng);
 		setZoom([map.getZoom()]);
-		console.log(center);
+
 	};
 
 	const list = {
