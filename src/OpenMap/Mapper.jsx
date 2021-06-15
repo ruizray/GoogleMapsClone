@@ -1,9 +1,9 @@
 import React, { useEffect, useState } from "react";
-import ReactMapboxGl, { Source, Layer } from "react-mapbox-gl";
+import ReactMapboxGl, { Source, Layer, Feature } from "react-mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Graph from "node-dijkstra";
 import { Button, Slider, Typography } from "@material-ui/core";
-import { load, returnBounds, getBuildingCoordinates } from "../scripts/mapper";
+import { load } from "../scripts/mapper";
 import { makeStyles } from "@material-ui/core/styles";
 import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
@@ -33,38 +33,36 @@ const Mapper = () => {
 	const [zoom, setZoom] = useState(15);
 	const [Nodes, setNodes] = useState();
 	const [Buildings, setBuildings] = useState();
-	const [Footways, setFootways] = useState();
 	const [AdjList, setAdjList] = useState();
 	const [PointNodes, setPointNodes] = useState();
 	const [Coordinates, setCoordinates] = useState([]);
 	const [footwaysCoordinates, setFootwaysCoordinates] = useState([]);
-	const [Enabled, setEnabled] = useState(true);
-
+	const [NodesGraph, setNodesGraph] = useState();
 	const [To, setTo] = useState("");
 
 	useEffect(() => {
-		if (Buildings && AdjList && PointNodes && Footways && Nodes && To && From && footwaysCoordinates) {
-			console.log("Do something after counter has changed", Buildings, AdjList, PointNodes, Footways, Nodes);
-			setEnabled(false);
-			var rout22 = new Graph(AdjList);
-			console.log(rout22);
+		if (AdjList) {
+			setNodesGraph(new Graph(AdjList));
+		}
+	}, [AdjList]);
+
+	useEffect(() => {
+		if (Buildings && NodesGraph && PointNodes && Nodes && To && From && footwaysCoordinates) {
 			var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
 			var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
-			console.log(AdjList.get(id1), AdjList.get(id2));
-			var path = rout22.path(id1, id2, { cost: true });
 			var coordinates = [];
-			console.log(path);
-			if (!path.path  || !path) {
+			var path = NodesGraph.path(id1, id2, { cost: true });
+			if (!path.path || !path) {
 				alert("No Path Found");
 			} else {
 				for (var i = 0; i < path.path.length; i++) {
-					coordinates.push(getBuildingCoordinates(Nodes, path.path[i]));
+					coordinates.push(Nodes[path.path[i]].lngLat);
 				}
-				console.log(coordinates);
+				console.log(coordinates)
 				setCoordinates(coordinates);
 			}
 		}
-	}, [Buildings, AdjList, PointNodes, Footways, Nodes, From, To, footwaysCoordinates]);
+	}, [Buildings, PointNodes, Nodes, From, AdjList, To, footwaysCoordinates, NodesGraph]);
 
 	const handleToClick = (event, index) => {
 		console.log(index, event);
@@ -78,19 +76,14 @@ const Mapper = () => {
 	const handleLoad = (e) => {
 		load(e);
 	};
-	const handleClick = () => {};
 
 	const getNodesList = async () => {
-		const [tempNodes, tempPointNodes, tempBuildings, tempFootways, tempAdjList, footwaysCoordinates] = await returnValues();
-		console.log(tempFootways);
-		console.log(footwaysCoordinates);
+		const [tempNodes, tempPointNodes, tempBuildings, tempAdjList, footwaysCoordinates, center] = await returnValues();
 		setFootwaysCoordinates(footwaysCoordinates);
 		setNodes(tempNodes);
-		const center = returnBounds().center;
 		setBuildings(tempBuildings);
 		setAdjList(tempAdjList);
 		setPointNodes(tempPointNodes);
-		setFootways(tempFootways);
 		setCenter(center);
 	};
 
@@ -99,12 +92,10 @@ const Mapper = () => {
 		console.log(zoom);
 	};
 	const handleDragEnd = (map, e) => {
-
 		var center = map.getCenter();
 		setLat(center.lat);
 		setLng(center.lng);
 		setZoom([map.getZoom()]);
-
 	};
 
 	const list = {
@@ -124,16 +115,8 @@ const Mapper = () => {
 			type: "FeatureCollection",
 			features: [...footwaysCoordinates],
 		},
-
-		// 	type: "Feature",
-		// 	properties: {},
-		// 	geometry: {
-		// 		type: "LineString",
-		// 		coordinates: [...footwaysCoordinates],
-		// 	},
-		// },
 	};
-	console.log(footways);
+
 	const renderFrom = () => {
 		if (!Buildings) {
 			return;
@@ -160,6 +143,10 @@ const Mapper = () => {
 		});
 	};
 
+	const handleNodeHover = (e,coordinate)=>{
+		console.log(e,coordinate)
+	}
+
 	return (
 		<div>
 			<Map
@@ -181,20 +168,23 @@ const Mapper = () => {
 						"line-cap": "round",
 					}}
 					paint={{
-						"line-width": 3,
-
+						"line-width": 2,
 						"line-color": ["get", "color"],
-					}}
-				/>
+					}}>
+						
+					</Layer>
 				<Layer
 					id='route2'
 					type='circle'
-					sourceId='route'
+
 					paint={{
 						"circle-color": "red",
 						"circle-radius": 5,
-					}}
-				/>
+					}}>
+					{Coordinates.map((coordinate1) => (
+						<Feature key={coordinate1} onMouseEnter={(e)=>handleNodeHover(e,coordinate1)} coordinates={coordinate1}/>
+					))}
+				</Layer>
 				<Layer
 					id='route3'
 					type='line'
@@ -206,7 +196,7 @@ const Mapper = () => {
 						"line-width": 3,
 						"line-dasharray": [0, 2],
 					}}
-				/>
+				></Layer>
 			</Map>
 
 			<form>
@@ -216,9 +206,7 @@ const Mapper = () => {
 				</label>
 			</form>
 			<Button onClick={() => getNodesList()}>Click Here</Button>
-			<Button disabled={Enabled} onClick={() => handleClick()}>
-				Click Here
-			</Button>
+
 			<Typography id='discrete-slider' gutterBottom>
 				Zoom Level
 			</Typography>
