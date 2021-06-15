@@ -64,6 +64,7 @@ const Login = props => {
 		for (let item of error.details) errors[item.path[0]] = item.message;
 
 		console.log(errors);
+		
 		return errors;
 	};
 	const validateProperty = ({ name, value }) => {
@@ -101,7 +102,13 @@ const Login = props => {
 	};
 
 	const classes = useStyles();
-	const disabled = validate()
+	var disabled = validate()
+	if(disabled === null){
+		disabled = false;
+	}else{
+		disabled =true
+	}
+	console.log(disabled)
 	return (
 		<Container component='main' maxWidth='xs'>
 			<CssBaseline />
@@ -152,7 +159,7 @@ const Login = props => {
 						<Grid item>
 						
 						<NavLink className='nav-link' to='/register'>
-								"Don't have an account? Sign Up"
+								Don't have an account? Sign Up
 						</NavLink>
 						</Grid>
 					</Grid>

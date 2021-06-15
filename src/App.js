@@ -7,12 +7,14 @@ import Dashboard from './Dashboard/Dashboard';
 function App() {
 	return (
 		<>
-			<Route exact path='/'>
+
+		<Dashboard></Dashboard>
+			{/* <Route exact path='/'>
 				<Redirect to='/dashboard' />
 			</Route>
 			<Route exact path='/dashboard' component={Dashboard} />
 			<Route exact path='/login' component={Login} />
-			<Route exact path='/register' component={Register} />
+			<Route exact path='/register' component={Register} /> */}
 		</>
 	);
 	// if (register === true) {
