@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import ReactMapboxGl, { Source, Layer, Feature } from "react-mapbox-gl";
+import ReactMapboxGl, { Source, Layer, Feature, Popup } from "react-mapbox-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import Graph from "node-dijkstra";
 import { Button, Slider, Typography } from "@material-ui/core";
@@ -39,15 +39,50 @@ const Mapper = () => {
 	const [footwaysCoordinates, setFootwaysCoordinates] = useState([]);
 	const [NodesGraph, setNodesGraph] = useState();
 	const [To, setTo] = useState("");
-
+	const [popupCoordinates, setPopupCoordinates] = useState([0, 0]);
+	const [nearestCoordinates, setNearestCoordinates] = useState([[0, 0]]);
+	const [Paths, setPaths] = useState();
+	const [PathNodes, setPathNodes] = useState();
 	useEffect(() => {
 		if (AdjList) {
+			AdjList.forEach((value,key)=>{
+				console.log(key, Nodes[key].lngLat)
+			})
 			setNodesGraph(new Graph(AdjList));
 		}
 	}, [AdjList]);
 
 	useEffect(() => {
+		console.log("rendered once");
+
+		if (!Paths) {
+			return;
+		}
+
+		var temp = Object.keys(Paths).map((key) => {
+	
+			return (
+				<Layer
+					key={key}
+					type='circle'
+					paint={{
+						"circle-radius": 6,
+						"circle-color": "black",
+					}}>
+					{Paths[key].coordinates.map((coordinate1) => (
+						<Feature key={coordinate1} onMouseEnter={(e) => handleNodeHover(e, coordinate1)} coordinates={coordinate1} />
+					))}
+				</Layer>
+			);
+		});
+
+		console.log(temp);
+		setPathNodes(temp);
+	}, [Paths]);
+
+	useEffect(() => {
 		if (Buildings && NodesGraph && PointNodes && Nodes && To && From && footwaysCoordinates) {
+		
 			var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
 			var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
 			var coordinates = [];
@@ -58,7 +93,7 @@ const Mapper = () => {
 				for (var i = 0; i < path.path.length; i++) {
 					coordinates.push(Nodes[path.path[i]].lngLat);
 				}
-				console.log(coordinates)
+				console.log(coordinates);
 				setCoordinates(coordinates);
 			}
 		}
@@ -78,13 +113,15 @@ const Mapper = () => {
 	};
 
 	const getNodesList = async () => {
-		const [tempNodes, tempPointNodes, tempBuildings, tempAdjList, footwaysCoordinates, center] = await returnValues();
+		const [tempNodes, tempPointNodes, tempBuildings, tempAdjList, footwaysCoordinates, center, Paths] = await returnValues();
 		setFootwaysCoordinates(footwaysCoordinates);
 		setNodes(tempNodes);
 		setBuildings(tempBuildings);
 		setAdjList(tempAdjList);
 		setPointNodes(tempPointNodes);
 		setCenter(center);
+		setPaths(Paths);
+		console.log(Paths);
 	};
 
 	const handleSliderChange = (event, newValue) => {
@@ -143,9 +180,13 @@ const Mapper = () => {
 		});
 	};
 
-	const handleNodeHover = (e,coordinate)=>{
-		console.log(e,coordinate)
-	}
+	const handleNodeHover = (e, coordinate) => {
+		console.log(coordinate)
+		if(coordinate){
+			setPopupCoordinates(coordinate);
+		}
+		
+	};
 
 	return (
 		<div>
@@ -160,31 +201,53 @@ const Mapper = () => {
 				onDragEnd={(map, e) => handleDragEnd(map, e)}>
 				<Source id='route' geoJsonSource={list} />
 				<Source id='footways' geoJsonSource={footways} />
-				<Layer
+				{/* <Layer
 					id='route4'
-					type='line'
+					type='circle'
 					sourceId='footways'
-					layout={{
-						"line-cap": "round",
-					}}
+				
 					paint={{
-						"line-width": 2,
-						"line-color": ["get", "color"],
-					}}>
+						"circle-radius":6,
+						"circle-color":"black",
+					}}></Layer>  */}
+
+				{Paths && (
+					<Layer
+						id='hello'
+						type='circle'
+						paint={{
+							"circle-radius": 6,
+							"circle-color": "black",
+						}}>
 						
+						{Object.keys(Paths).map((key) => {
+							return Paths[key].coordinates.map((coordinate1) => {
+								return <Feature key={coordinate1} onMouseEnter={(e) => handleNodeHover(e, coordinate1)} coordinates={coordinate1} />;
+							});
+						})}
 					</Layer>
+				)}
+
 				<Layer
 					id='route2'
 					type='circle'
-
 					paint={{
 						"circle-color": "red",
 						"circle-radius": 5,
 					}}>
 					{Coordinates.map((coordinate1) => (
-						<Feature key={coordinate1} onMouseEnter={(e)=>handleNodeHover(e,coordinate1)} coordinates={coordinate1}/>
+						<Feature key={coordinate1} onMouseEnter={(e) => handleNodeHover(e, coordinate1)} coordinates={coordinate1} />
 					))}
 				</Layer>
+				<Popup
+					coordinates={popupCoordinates}
+					offset={{
+						"bottom-left": [12, -38],
+						bottom: [0, -38],
+						"bottom-right": [-12, -38],
+					}}>
+					<h1>{"[ " + popupCoordinates[0] + " , " + popupCoordinates[1] + "]"}</h1>
+				</Popup>
 				<Layer
 					id='route3'
 					type='line'
@@ -195,8 +258,7 @@ const Mapper = () => {
 					paint={{
 						"line-width": 3,
 						"line-dasharray": [0, 2],
-					}}
-				></Layer>
+					}}></Layer>
 			</Map>
 
 			<form>

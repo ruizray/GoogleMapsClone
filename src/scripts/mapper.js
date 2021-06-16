@@ -10,7 +10,7 @@ var footwaysCoordinates = [];
 var AdjList = new Map();
 
 export async function returnValues() {
-	return [Nodes, EndNodes, buildings, AdjList, footwaysCoordinates, center];
+	return [Nodes, EndNodes, buildings, AdjList, footwaysCoordinates, center, Paths];
 }
 
 function getBuildings(ways) {
@@ -52,13 +52,13 @@ function getNodes2(nodes) {
 		}
 		const tempMap = new Map();
 		AdjList.set(node._attributes.id, tempMap);
-		Nodes[node._attributes.id] = { name: temp, lngLat: [node._attributes.lon, node._attributes.lat] };
+		Nodes[node._attributes.id] = { name: temp, lngLat: [+node._attributes.lon, +node._attributes.lat] };
 	});
 }
 
 function getPaths(ways) {
 	_.remove(ways, (path) => {
-		if (_.find(path.tag, (child) => child._attributes.k === "highway" || child._attributes.k === "amenity")) {
+		if (_.find(path.tag, (child) => child._attributes.k === "highway" )) {
 			var coordinates = [];
 			_.forEach(path.nd, (nd, index) => {
 				var currentRef = nd._attributes.ref;
@@ -96,7 +96,7 @@ function getPaths(ways) {
 			var endID = path.nd[path.nd.length - 1]._attributes.ref;
 			EndNodes.push({ id: startID, lngLat: Nodes[startID].lngLat });
 			EndNodes.push({ id: endID, lngLat: Nodes[endID].lngLat });
-			Paths[path._attributes.id] = { coordinates };
+			Paths[path._attributes.id] = { coordinates, color:"#" + randomColor };
 			return path;
 		}
 	});
