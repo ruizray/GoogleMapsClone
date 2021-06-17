@@ -7,11 +7,12 @@ var Nodes = {};
 var Paths = {};
 var EndNodes = [];
 var buildings = {};
-var footwaysCoordinates = [];
+
 var AdjList = new Map();
 
 export async function returnValues() {
-	return [Nodes, EndNodes, buildings, AdjList, footwaysCoordinates, center, Paths];
+	console.log(Nodes);
+	return [Nodes, EndNodes, buildings, AdjList, center, Paths];
 }
 
 function getBuildings(ways) {
@@ -23,19 +24,16 @@ function getBuildings(ways) {
 					var totalLat = 0;
 					var totalNodes = 0;
 					var id = elem._attributes.id;
-
 					_.forEach(elem.nd, (nd) => {
 						var tempNode = Nodes[nd._attributes.ref];
-						console.log(tempNode)
 						totalLat = +tempNode.lngLat[1] + totalLat;
 						totalLong = +tempNode.lngLat[0] + totalLong;
 						totalNodes++;
+						tempNode = { partOf: id, ...tempNode };
 					});
 					var lat = totalLat / totalNodes;
 					var long = totalLong / totalNodes;
-					console.log(long,lat)
-					 Nodes[id] = { name: child._attributes.v, lngLat: [long, lat] };
-				
+					Nodes[id] = { name: child._attributes.v, lngLat: [long, lat] };
 					buildings[child._attributes.v] = { id, lngLat: [long, lat] };
 				}
 			});
@@ -43,15 +41,19 @@ function getBuildings(ways) {
 		}
 	});
 }
-function getNodes2(nodes) {
+function getNodes(nodes) {
+	const filter = ["name"];
 	_.forEach(nodes, (node) => {
-		var temp = _.find(node.tag, (child) => child._attributes.k === "name") || "";
+		var temp = _.find(node.tag, (child) => {
+			if (filter.includes(child._attributes.k)) {
+				return child;
+			}
+		});
 		if (!temp) {
 			temp = "";
 		} else {
 			console.log(node);
 			buildings[temp._attributes.v] = { id: node._attributes.id, lngLat: [node._attributes.lon, node._attributes.lat] };
-
 			temp = temp._attributes.v;
 		}
 		const tempMap = new Map();
@@ -74,9 +76,7 @@ function getPaths(ways) {
 						return;
 					} else {
 						var weight = distBetween2Points(current[1], current[0], next[1], next[0]);
-
 						AdjList.get(currentRef).set(nextRef, weight);
-
 						AdjList.get(nextRef).set(currentRef, weight);
 					}
 				}
@@ -84,18 +84,7 @@ function getPaths(ways) {
 			});
 
 			const randomColor = Math.floor(Math.random() * 16777215).toString(16);
-			var obj = {
-				type: "Feature",
-				properties: {
-					color: "#" + randomColor, // red
-				},
-				geometry: {
-					type: "LineString",
-					coordinates: [...coordinates],
-				},
-			};
 
-			footwaysCoordinates.push(obj);
 			var startID = path.nd[0]._attributes.ref;
 			var endID = path.nd[path.nd.length - 1]._attributes.ref;
 			EndNodes.push({ id: startID, lngLat: Nodes[startID].lngLat });
@@ -125,7 +114,7 @@ export function load(e) {
 
 		console.log(parsed);
 		getBounds(test.osm[0].bounds[0]);
-		getNodes2(test.osm[0].node);
+		getNodes(test.osm[0].node);
 		getBuildings(test.osm[0].way);
 		getPaths(test.osm[0].way);
 	};

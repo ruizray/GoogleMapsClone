@@ -36,7 +36,6 @@ const Mapper = () => {
 	const [AdjList, setAdjList] = useState();
 	const [PointNodes, setPointNodes] = useState();
 	const [Coordinates, setCoordinates] = useState([]);
-	const [footwaysCoordinates, setFootwaysCoordinates] = useState([]);
 	const [NodesGraph, setNodesGraph] = useState();
 	const [To, setTo] = useState("");
 	const [popupCoordinates, setPopupCoordinates] = useState([0, 0]);
@@ -52,7 +51,7 @@ const Mapper = () => {
 
 
 	useEffect(() => {
-		if (Buildings && NodesGraph && PointNodes && Nodes && To && From && footwaysCoordinates) {
+		if (Buildings && NodesGraph && PointNodes && Nodes && To && From) {
 
 			var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
 			var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
@@ -69,7 +68,7 @@ const Mapper = () => {
 				setCoordinates(coordinates);
 			}
 		}
-	}, [Buildings, PointNodes, Nodes, From, AdjList, To, footwaysCoordinates, NodesGraph]);
+	}, [Buildings, PointNodes, Nodes, From, AdjList, To,  NodesGraph]);
 
 	const handleToClick = (event, index) => {
 		console.log(index, event);
@@ -85,16 +84,13 @@ const Mapper = () => {
 	};
 
 	const getNodesList = async () => {
-		const [tempNodes, tempPointNodes, tempBuildings, tempAdjList, footwaysCoordinates, center, Paths] = await returnValues();
-	
-		setFootwaysCoordinates(footwaysCoordinates);
-		setNodes(tempNodes);
-		setBuildings(tempBuildings);
-		setAdjList(tempAdjList);
-		setPointNodes(tempPointNodes);
-		setCenter(center);
+		const [Nodes, EndPoints, Buildings, AdjList, Center, Paths] = await returnValues();
+		setNodes(Nodes);
+		setBuildings(Buildings);
+		setAdjList(AdjList);
+		setPointNodes(EndPoints);
+		setCenter(Center);
 		setPaths(Paths);
-		console.log(Paths);
 	};
 
 	const handleSliderChange = (event, newValue) => {
@@ -119,13 +115,7 @@ const Mapper = () => {
 			},
 		},
 	};
-	const footways = {
-		type: "geojson",
-		data: {
-			type: "FeatureCollection",
-			features: [...footwaysCoordinates],
-		},
-	};
+
 
 	const renderFrom = () => {
 		if (!Buildings) {
@@ -154,17 +144,19 @@ const Mapper = () => {
 	};
 
 	const handleNodeHover = (e, coordinate) => {
-		console.log(coordinate);
 		if (coordinate) {
 			var temp  = Array.from(AdjList.get(coordinate).keys() )
 			var temp2 = temp.map((nodeId) => {
 				return Nodes[nodeId].lngLat
 			})
-			console.log(temp, temp2)
 			temp2 = [...temp2 , Nodes[coordinate].lngLat]
 			setNearestCoordinates(temp2)
 			setPopupCoordinates(Nodes[coordinate].lngLat);
 		}
+	};
+	const handleNodeHoverLeave = (e, coordinate) => {
+		setPopupCoordinates([0,0]);
+		setNearestCoordinates([0,0])
 	};
 
 	return (
@@ -179,23 +171,13 @@ const Mapper = () => {
 				center={center}
 				onDragEnd={(map, e) => handleDragEnd(map, e)}>
 				<Source id='route' geoJsonSource={list} />
-				<Source id='footways' geoJsonSource={footways} />
-				{/* <Layer
-					id='route4'
-					type='circle'
-					sourceId='footways'
-				
-					paint={{
-						"circle-radius":6,
-						"circle-color":"black",
-					}}></Layer>  */}
 
 				{Nodes && (
 					<Layer
 						id='hello'
 						type='circle'
 						paint={{
-							"circle-radius": 3,
+							"circle-radius": 7,
 							"circle-color": "black",
 						}}>
 						{Object.keys(Nodes).map((key) => {
@@ -203,6 +185,7 @@ const Mapper = () => {
 								<Feature
 									key={Nodes[key].lngLat}
 									onMouseEnter={(e) => handleNodeHover(e, key)}
+									onMouseLeave={(e) => handleNodeHoverLeave(e,key)}
 									coordinates={Nodes[key].lngLat}
 								/>
 							);
@@ -234,13 +217,13 @@ const Mapper = () => {
 					type='circle'
 					paint={{
 						"circle-color": "red",
-						"circle-radius": 5,
+						"circle-radius": 10,
 					}}>
-					{Coordinates.map((coordinate1) => (
-						<Feature key={coordinate1} onMouseEnter={(e) => handleNodeHover(e, coordinate1)} coordinates={coordinate1} />
+					{Coordinates.map((coordinate1 , index) => (
+						<Feature key={"K" + index}  coordinates={coordinate1} />
 					))}
 				</Layer>
-				{/* <Popup
+				<Popup
 					coordinates={popupCoordinates}
 					offset={{
 						"bottom-left": [12, -38],
@@ -248,7 +231,7 @@ const Mapper = () => {
 						"bottom-right": [-12, -38],
 					}}>
 					<h1>{"[ " + popupCoordinates[0] + " , " + popupCoordinates[1] + "]"}</h1>
-				</Popup> */}
+				</Popup>
 				<Layer
 					id='route3'
 					type='line'
