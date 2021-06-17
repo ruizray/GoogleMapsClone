@@ -9,6 +9,7 @@
     "@testing-library/react": "^11.2.7",
     "@testing-library/user-event": "^12.8.3",
     "bootstrap": "^5.0.1",
+    "dijkstra-floydwarshall-graph": "^1.2.2",
     "joi-browser": "^13.4.0",
     "lodash": "^4.17.21",
     "mapbox-gl": "^2.3.0",

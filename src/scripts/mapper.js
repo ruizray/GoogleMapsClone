@@ -1,5 +1,6 @@
 const txml = require("txml");
 var _ = require("lodash");
+
 var parsed;
 var center = [];
 var Nodes = {};
@@ -25,13 +26,16 @@ function getBuildings(ways) {
 
 					_.forEach(elem.nd, (nd) => {
 						var tempNode = Nodes[nd._attributes.ref];
-						totalLat = +tempNode.lat + totalLat;
-						totalLong = +tempNode.lon + totalLong;
+						console.log(tempNode)
+						totalLat = +tempNode.lngLat[1] + totalLat;
+						totalLong = +tempNode.lngLat[0] + totalLong;
 						totalNodes++;
 					});
 					var lat = totalLat / totalNodes;
 					var long = totalLong / totalNodes;
-
+					console.log(long,lat)
+					 Nodes[id] = { name: child._attributes.v, lngLat: [long, lat] };
+				
 					buildings[child._attributes.v] = { id, lngLat: [long, lat] };
 				}
 			});
@@ -58,7 +62,7 @@ function getNodes2(nodes) {
 
 function getPaths(ways) {
 	_.remove(ways, (path) => {
-		if (_.find(path.tag, (child) => child._attributes.k === "highway" )) {
+		if (_.find(path.tag, (child) => child._attributes.k === "highway")) {
 			var coordinates = [];
 			_.forEach(path.nd, (nd, index) => {
 				var currentRef = nd._attributes.ref;
@@ -96,10 +100,16 @@ function getPaths(ways) {
 			var endID = path.nd[path.nd.length - 1]._attributes.ref;
 			EndNodes.push({ id: startID, lngLat: Nodes[startID].lngLat });
 			EndNodes.push({ id: endID, lngLat: Nodes[endID].lngLat });
-			Paths[path._attributes.id] = { coordinates, color:"#" + randomColor };
+			Paths[path._attributes.id] = { coordinates, color: "#" + randomColor };
 			return path;
 		}
 	});
+	console.log(_.keys(Nodes));
+
+	var temp = Object.keys(Nodes).map((key, value) => {
+		return Nodes[key].lngLat;
+	});
+	console.log(temp);
 }
 
 export function load(e) {

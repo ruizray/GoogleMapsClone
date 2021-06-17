@@ -45,48 +45,20 @@ const Mapper = () => {
 	const [PathNodes, setPathNodes] = useState();
 	useEffect(() => {
 		if (AdjList) {
-			AdjList.forEach((value,key)=>{
-				console.log(key, Nodes[key].lngLat)
-			})
 			setNodesGraph(new Graph(AdjList));
 		}
 	}, [AdjList]);
 
-	useEffect(() => {
-		console.log("rendered once");
 
-		if (!Paths) {
-			return;
-		}
-
-		var temp = Object.keys(Paths).map((key) => {
-	
-			return (
-				<Layer
-					key={key}
-					type='circle'
-					paint={{
-						"circle-radius": 6,
-						"circle-color": "black",
-					}}>
-					{Paths[key].coordinates.map((coordinate1) => (
-						<Feature key={coordinate1} onMouseEnter={(e) => handleNodeHover(e, coordinate1)} coordinates={coordinate1} />
-					))}
-				</Layer>
-			);
-		});
-
-		console.log(temp);
-		setPathNodes(temp);
-	}, [Paths]);
 
 	useEffect(() => {
 		if (Buildings && NodesGraph && PointNodes && Nodes && To && From && footwaysCoordinates) {
-		
+
 			var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
 			var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
 			var coordinates = [];
 			var path = NodesGraph.path(id1, id2, { cost: true });
+			console.log(path)
 			if (!path.path || !path) {
 				alert("No Path Found");
 			} else {
@@ -114,6 +86,7 @@ const Mapper = () => {
 
 	const getNodesList = async () => {
 		const [tempNodes, tempPointNodes, tempBuildings, tempAdjList, footwaysCoordinates, center, Paths] = await returnValues();
+	
 		setFootwaysCoordinates(footwaysCoordinates);
 		setNodes(tempNodes);
 		setBuildings(tempBuildings);
@@ -181,11 +154,17 @@ const Mapper = () => {
 	};
 
 	const handleNodeHover = (e, coordinate) => {
-		console.log(coordinate)
-		if(coordinate){
-			setPopupCoordinates(coordinate);
+		console.log(coordinate);
+		if (coordinate) {
+			var temp  = Array.from(AdjList.get(coordinate).keys() )
+			var temp2 = temp.map((nodeId) => {
+				return Nodes[nodeId].lngLat
+			})
+			console.log(temp, temp2)
+			temp2 = [...temp2 , Nodes[coordinate].lngLat]
+			setNearestCoordinates(temp2)
+			setPopupCoordinates(Nodes[coordinate].lngLat);
 		}
-		
 	};
 
 	return (
@@ -211,19 +190,41 @@ const Mapper = () => {
 						"circle-color":"black",
 					}}></Layer>  */}
 
-				{Paths && (
+				{Nodes && (
 					<Layer
 						id='hello'
 						type='circle'
 						paint={{
-							"circle-radius": 6,
+							"circle-radius": 3,
 							"circle-color": "black",
 						}}>
-						
-						{Object.keys(Paths).map((key) => {
-							return Paths[key].coordinates.map((coordinate1) => {
-								return <Feature key={coordinate1} onMouseEnter={(e) => handleNodeHover(e, coordinate1)} coordinates={coordinate1} />;
-							});
+						{Object.keys(Nodes).map((key) => {
+							return (
+								<Feature
+									key={Nodes[key].lngLat}
+									onMouseEnter={(e) => handleNodeHover(e, key)}
+									coordinates={Nodes[key].lngLat}
+								/>
+							);
+						})}
+					</Layer>
+				)}
+				{nearestCoordinates && (
+					<Layer
+						id='hello2'
+						type='circle'
+						paint={{
+							"circle-radius": 10,
+							"circle-color": "blue",
+						}}>
+						{nearestCoordinates.map((key, index) => {
+							return (
+								<Feature
+									key={index}
+							
+									coordinates={key}
+								/>
+							);
 						})}
 					</Layer>
 				)}
@@ -239,7 +240,7 @@ const Mapper = () => {
 						<Feature key={coordinate1} onMouseEnter={(e) => handleNodeHover(e, coordinate1)} coordinates={coordinate1} />
 					))}
 				</Layer>
-				<Popup
+				{/* <Popup
 					coordinates={popupCoordinates}
 					offset={{
 						"bottom-left": [12, -38],
@@ -247,7 +248,7 @@ const Mapper = () => {
 						"bottom-right": [-12, -38],
 					}}>
 					<h1>{"[ " + popupCoordinates[0] + " , " + popupCoordinates[1] + "]"}</h1>
-				</Popup>
+				</Popup> */}
 				<Layer
 					id='route3'
 					type='line'
