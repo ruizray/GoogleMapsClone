@@ -9,6 +9,7 @@ import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
 import ListItemText from "@material-ui/core/ListItemText";
 import { getNearestNode, returnValues } from "./../scripts/mapper";
+import _ from "lodash";
 
 const Map = ReactMapboxGl({
 	accessToken: "pk.eyJ1IjoicnVpenJheSIsImEiOiJja29naXN5ZTEwcmpyMm9ucnBoaW90bzBiIn0._TowTB5Zp7nGWcPPnGMoUQ",
@@ -42,33 +43,41 @@ const Mapper = () => {
 	const [nearestCoordinates, setNearestCoordinates] = useState([[0, 0]]);
 	const [Paths, setPaths] = useState();
 	const [PathNodes, setPathNodes] = useState();
-	useEffect(() => {
-		if (AdjList) {
-			setNodesGraph(new Graph(AdjList));
-		}
-	}, [AdjList]);
-
-
+	// useEffect(() => {
+	// 	if (AdjList) {
+	// 		setNodesGraph(new Graph(AdjList));
+	// 	}
+	// }, [AdjList]);
 
 	useEffect(() => {
-		if (Buildings && NodesGraph && PointNodes && Nodes && To && From) {
-
-			var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
-			var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
-			var coordinates = [];
-			var path = NodesGraph.path(id1, id2, { cost: true });
-			console.log(path)
-			if (!path.path || !path) {
-				alert("No Path Found");
-			} else {
-				for (var i = 0; i < path.path.length; i++) {
-					coordinates.push(Nodes[path.path[i]].lngLat);
+	
+		if ( Nodes) {
+			console.log(Object.keys(Nodes).length)
+			var building = _.remove(Nodes, (node) => {
+		console.log(node)
+				if (node.building) {
+					console.log(node.building);
+					return node;
 				}
-				console.log(coordinates);
-				setCoordinates(coordinates);
-			}
+			});
+			console.log(Object.keys(Nodes).length)
 		}
-	}, [Buildings, PointNodes, Nodes, From, AdjList, To,  NodesGraph]);
+		// 		var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
+		// 		var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
+		// 		var coordinates = [];
+		// 		var path = NodesGraph.path(id1, id2, { cost: true });
+		// 		console.log(path)
+		// 		if (!path.path || !path) {
+		// 			alert("No Path Found");
+		// 		} else {
+		// 			for (var i = 0; i < path.path.length; i++) {
+		// 				coordinates.push(Nodes[path.path[i]].lngLat);
+		// 			}
+		// 			console.log(coordinates);
+		// 			setCoordinates(coordinates);
+		// 		}
+		// 	}
+	}, [ Nodes]);
 
 	const handleToClick = (event, index) => {
 		console.log(index, event);
@@ -85,12 +94,15 @@ const Mapper = () => {
 
 	const getNodesList = async () => {
 		const [Nodes, EndPoints, Buildings, AdjList, Center, Paths] = await returnValues();
+		console.log(Nodes, EndPoints, Buildings, AdjList, Center, Paths);
 		setNodes(Nodes);
-		setBuildings(Buildings);
-		setAdjList(AdjList);
-		setPointNodes(EndPoints);
 		setCenter(Center);
-		setPaths(Paths);
+		console.log(AdjList);
+		// setBuildings(Buildings);
+		setAdjList(AdjList);
+		// setPointNodes(EndPoints);
+
+		// setPaths(Paths);
 	};
 
 	const handleSliderChange = (event, newValue) => {
@@ -115,7 +127,6 @@ const Mapper = () => {
 			},
 		},
 	};
-
 
 	const renderFrom = () => {
 		if (!Buildings) {
@@ -145,18 +156,18 @@ const Mapper = () => {
 
 	const handleNodeHover = (e, coordinate) => {
 		if (coordinate) {
-			var temp  = Array.from(AdjList.get(coordinate).keys() )
+			var temp = Array.from(AdjList.get(coordinate).keys());
 			var temp2 = temp.map((nodeId) => {
-				return Nodes[nodeId].lngLat
-			})
-			temp2 = [...temp2 , Nodes[coordinate].lngLat]
-			setNearestCoordinates(temp2)
+				return Nodes[nodeId].lngLat;
+			});
+			temp2 = [...temp2, Nodes[coordinate].lngLat];
+			setNearestCoordinates(temp2);
 			setPopupCoordinates(Nodes[coordinate].lngLat);
 		}
 	};
 	const handleNodeHoverLeave = (e, coordinate) => {
-		setPopupCoordinates([0,0]);
-		setNearestCoordinates([0,0])
+		setPopupCoordinates([0, 0]);
+		setNearestCoordinates([0, 0]);
 	};
 
 	return (
@@ -185,7 +196,7 @@ const Mapper = () => {
 								<Feature
 									key={Nodes[key].lngLat}
 									onMouseEnter={(e) => handleNodeHover(e, key)}
-									onMouseLeave={(e) => handleNodeHoverLeave(e,key)}
+									onMouseLeave={(e) => handleNodeHoverLeave(e, key)}
 									coordinates={Nodes[key].lngLat}
 								/>
 							);
@@ -201,13 +212,7 @@ const Mapper = () => {
 							"circle-color": "blue",
 						}}>
 						{nearestCoordinates.map((key, index) => {
-							return (
-								<Feature
-									key={index}
-							
-									coordinates={key}
-								/>
-							);
+							return <Feature key={index} coordinates={key} />;
 						})}
 					</Layer>
 				)}
@@ -219,8 +224,8 @@ const Mapper = () => {
 						"circle-color": "red",
 						"circle-radius": 10,
 					}}>
-					{Coordinates.map((coordinate1 , index) => (
-						<Feature key={"K" + index}  coordinates={coordinate1} />
+					{Coordinates.map((coordinate1, index) => (
+						<Feature key={"K" + index} coordinates={coordinate1} />
 					))}
 				</Layer>
 				<Popup

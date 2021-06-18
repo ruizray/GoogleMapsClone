@@ -16,58 +16,138 @@ export async function returnValues() {
 }
 
 function getBuildings(ways) {
-	_.remove(ways, (elem) => {
-		if (_.find(elem.tag, (child) => child._attributes.k === "building")) {
-			_.forEach(elem.tag, (child) => {
-				if (child._attributes.k === "name") {
-					var totalLong = 0;
+	console.log(ways)
+	 _.remove(ways, (way) => {
+		if (_.find(way.tag, (child) => child._attributes.k === "building")) {
+			var obj = {};
+			_.forEach(way.tag, (child) => {
+				var temp = {};
+				temp[child._attributes.k] = child._attributes.v;
+				_.assign(obj, temp);
+			});
+
+			var totalLong = 0;
 					var totalLat = 0;
 					var totalNodes = 0;
-					var id = elem._attributes.id;
-					_.forEach(elem.nd, (nd) => {
+					var id = way._attributes.id;
+					_.forEach(way.nd, (nd) => {
 						var tempNode = Nodes[nd._attributes.ref];
 						totalLat = +tempNode.lngLat[1] + totalLat;
 						totalLong = +tempNode.lngLat[0] + totalLong;
 						totalNodes++;
-						tempNode = { partOf: id, ...tempNode };
+			
 					});
 					var lat = totalLat / totalNodes;
 					var long = totalLong / totalNodes;
-					Nodes[id] = { name: child._attributes.v, lngLat: [long, lat] };
-					buildings[child._attributes.v] = { id, lngLat: [long, lat] };
-				}
-			});
-			return elem;
+					var name = obj.name
+					console.log(name)
+					Nodes[name]={}
+				
+					_.assign(Nodes[name], obj, {lngLat : [long,lat]});
+					
+			console.log(Nodes[name]);
+			return way
 		}
 	});
+
+
+	console.log(ways)
+	// _.remove(ways, (elem) => {
+	// 	if (_.find(elem.tag, (child) => child._attributes.k === "building")) {
+	// 		_.forEach(elem.tag, (child) => {
+	// 			if (child._attributes.k === "name") {
+	// 				var totalLong = 0;
+	// 				var totalLat = 0;
+	// 				var totalNodes = 0;
+	// 				var id = elem._attributes.id;
+	// 				_.forEach(elem.nd, (nd) => {
+	// 					var tempNode = Nodes[nd._attributes.ref];
+	// 					totalLat = +tempNode.lngLat[1] + totalLat;
+	// 					totalLong = +tempNode.lngLat[0] + totalLong;
+	// 					totalNodes++;
+	// 					tempNode = { partOf: id, ...tempNode };
+	// 				});
+	// 				var lat = totalLat / totalNodes;
+	// 				var long = totalLong / totalNodes;
+	// 				Nodes[id] = { name: child._attributes.v, lngLat: [long, lat] };
+	// 				buildings[child._attributes.v] = { id, lngLat: [long, lat] };
+	// 			}
+	// 		});
+	// 		return elem;
+	// 	}
+	// });
 }
 function getNodes(nodes) {
-	const filter = ["name"];
-	_.forEach(nodes, (node) => {
-		var temp = _.find(node.tag, (child) => {
-			if (filter.includes(child._attributes.k)) {
-				return child;
-			}
+	var result = _.forEach(nodes, (node) => {
+		var obj = { lngLat: [+node._attributes.lon, +node._attributes.lat] };
+		AdjList.set(node._attributes.id, new Map());
+		_.forEach(node.tag, (child) => {
+			var temp = {};
+			temp[child._attributes.k] = child._attributes.v;
+
+			_.assign(obj, temp);
 		});
-		if (!temp) {
-			temp = "";
-		} else {
-			console.log(node);
-			buildings[temp._attributes.v] = { id: node._attributes.id, lngLat: [node._attributes.lon, node._attributes.lat] };
-			temp = temp._attributes.v;
+		
+		Nodes[node._attributes.id] = obj;
+	});
+
+	// const filter = ["name"];
+	// _.forEach(nodes, (node) => {
+	// 	var temp = _.find(node.tag, (child) => {
+	// 		if (filter.includes(child._attributes.k)) {
+	// 			return child;
+	// 		}
+	// 	});
+	// 	if (!temp) {
+	// 		temp = "";
+	// 	} else {
+	// 		console.log(node);
+	// 		buildings[temp._attributes.v] = { id: node._attributes.id, lngLat: [node._attributes.lon, node._attributes.lat] };
+	// 		temp = temp._attributes.v;
+	// 	}
+	// 	const tempMap = new Map();
+	// 	AdjList.set(node._attributes.id, tempMap);
+	// 	Nodes[node._attributes.id] = { name: temp, lngLat: [+node._attributes.lon, +node._attributes.lat] };
+	// });
+}
+function addOneway(path, obj) {
+	_.forEach(path, (node, index) => {
+		var currentRef = node._attributes.ref;
+		_.assign(Nodes[currentRef], obj);
+		var current = Nodes[currentRef].lngLat;
+
+		if (path[index + 1]) {
+			var nextRef = path[index + 1]._attributes.ref;
+			var next = Nodes[nextRef].lngLat;
+			if (current === next) {
+				return;
+			} else {
+				var weight = distBetween2Points(current[1], current[0], next[1], next[0]);
+				if(weight ===0){
+					console.log("ZERO")
+				}
+				AdjList.get(currentRef).set(nextRef, weight);
+			}
 		}
-		const tempMap = new Map();
-		AdjList.set(node._attributes.id, tempMap);
-		Nodes[node._attributes.id] = { name: temp, lngLat: [+node._attributes.lon, +node._attributes.lat] };
+
+		AdjList.get(currentRef).set(nextRef, weight);
 	});
 }
-
 function getPaths(ways) {
-	_.remove(ways, (path) => {
-		if (_.find(path.tag, (child) => child._attributes.k === "highway")) {
-			var coordinates = [];
+	console.log(ways);
+	var result = _.forEach(ways, (path) => {
+		var obj = {};
+		_.forEach(path.tag, (child) => {
+			var temp = {};
+			temp[child._attributes.k] = child._attributes.v;
+			_.assign(obj, temp);
+		});
+		if (obj.oneway) {
+			addOneway(path.nd, obj);
+		} else {
 			_.forEach(path.nd, (nd, index) => {
 				var currentRef = nd._attributes.ref;
+				_.assign(Nodes[currentRef], obj);
 				var current = Nodes[currentRef].lngLat;
 				if (path.nd[index + 1]) {
 					var nextRef = path.nd[index + 1]._attributes.ref;
@@ -76,29 +156,60 @@ function getPaths(ways) {
 						return;
 					} else {
 						var weight = distBetween2Points(current[1], current[0], next[1], next[0]);
+						if(weight ===0){
+							console.log("ZERO")
+						}
 						AdjList.get(currentRef).set(nextRef, weight);
 						AdjList.get(nextRef).set(currentRef, weight);
 					}
 				}
-				coordinates.push(current);
 			});
-
-			const randomColor = Math.floor(Math.random() * 16777215).toString(16);
-
-			var startID = path.nd[0]._attributes.ref;
-			var endID = path.nd[path.nd.length - 1]._attributes.ref;
-			EndNodes.push({ id: startID, lngLat: Nodes[startID].lngLat });
-			EndNodes.push({ id: endID, lngLat: Nodes[endID].lngLat });
-			Paths[path._attributes.id] = { coordinates, color: "#" + randomColor };
-			return path;
 		}
-	});
-	console.log(_.keys(Nodes));
 
-	var temp = Object.keys(Nodes).map((key, value) => {
-		return Nodes[key].lngLat;
+		var startID = path.nd[0]._attributes.ref;
+		var endID = path.nd[path.nd.length - 1]._attributes.ref;
+		EndNodes.push({ id: startID, lngLat: Nodes[startID].lngLat });
+		EndNodes.push({ id: endID, lngLat: Nodes[endID].lngLat });
 	});
-	console.log(temp);
+	console.log(result);
+	console.log(Nodes);
+
+	// _.remove(ways, (path) => {
+	// 	if (_.find(path.tag, (child) => child._attributes.k === "highway")) {
+	// 		var coordinates = [];
+	// 		_.forEach(path.nd, (nd, index) => {
+	// 			var currentRef = nd._attributes.ref;
+	// 			var current = Nodes[currentRef].lngLat;
+	// 			if (path.nd[index + 1]) {
+	// 				var nextRef = path.nd[index + 1]._attributes.ref;
+	// 				var next = Nodes[nextRef].lngLat;
+	// 				if (current === next) {
+	// 					return;
+	// 				} else {
+	// 					var weight = distBetween2Points(current[1], current[0], next[1], next[0]);
+	// 					AdjList.get(currentRef).set(nextRef, weight);
+	// 					AdjList.get(nextRef).set(currentRef, weight);
+	// 				}
+	// 			}
+	// 			coordinates.push(current);
+	// 		});
+
+	// 		const randomColor = Math.floor(Math.random() * 16777215).toString(16);
+
+	// 		var startID = path.nd[0]._attributes.ref;
+	// 		var endID = path.nd[path.nd.length - 1]._attributes.ref;
+	// 		EndNodes.push({ id: startID, lngLat: Nodes[startID].lngLat });
+	// 		EndNodes.push({ id: endID, lngLat: Nodes[endID].lngLat });
+	// 		Paths[path._attributes.id] = { coordinates, color: "#" + randomColor };
+	// 		return path;
+	// 	}
+	// });
+	// console.log(_.keys(Nodes));
+
+	// var temp = Object.keys(Nodes).map((key, value) => {
+	// 	return Nodes[key].lngLat;
+	// });
+	// console.log(temp);
 }
 
 export function load(e) {
