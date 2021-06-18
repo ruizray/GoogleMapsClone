@@ -11,12 +11,10 @@ var buildings = {};
 var AdjList = new Map();
 
 export async function returnValues() {
-	console.log(Nodes);
 	return [Nodes, EndNodes, buildings, AdjList, center, Paths];
 }
 
 function getBuildings(ways) {
-	console.log(ways)
 	 _.remove(ways, (way) => {
 		if (_.find(way.tag, (child) => child._attributes.k === "building")) {
 			var obj = {};
@@ -40,18 +38,16 @@ function getBuildings(ways) {
 					var lat = totalLat / totalNodes;
 					var long = totalLong / totalNodes;
 					var name = obj.name
-					console.log(name)
+		
 					Nodes[name]={}
 				
 					_.assign(Nodes[name], obj, {lngLat : [long,lat]});
-					
-			console.log(Nodes[name]);
 			return way
 		}
 	});
 
 
-	console.log(ways)
+
 	// _.remove(ways, (elem) => {
 	// 	if (_.find(elem.tag, (child) => child._attributes.k === "building")) {
 	// 		_.forEach(elem.tag, (child) => {
@@ -78,8 +74,14 @@ function getBuildings(ways) {
 	// });
 }
 function getNodes(nodes) {
-	var result = _.forEach(nodes, (node) => {
+	 _.forEach(nodes, (node) => {
 		var obj = { lngLat: [+node._attributes.lon, +node._attributes.lat] };
+		var name = _.find(node.tag, (child) => child._attributes.k === "name") 
+			if(name){
+				console.log(name)
+				 _.assign(obj, {name:name._attributes.v , building:true } )
+			}
+		
 		AdjList.set(node._attributes.id, new Map());
 		_.forEach(node.tag, (child) => {
 			var temp = {};
@@ -123,9 +125,7 @@ function addOneway(path, obj) {
 				return;
 			} else {
 				var weight = distBetween2Points(current[1], current[0], next[1], next[0]);
-				if(weight ===0){
-					console.log("ZERO")
-				}
+				
 				AdjList.get(currentRef).set(nextRef, weight);
 			}
 		}
@@ -134,7 +134,7 @@ function addOneway(path, obj) {
 	});
 }
 function getPaths(ways) {
-	console.log(ways);
+	
 	var result = _.forEach(ways, (path) => {
 		var obj = {};
 		_.forEach(path.tag, (child) => {
@@ -156,9 +156,7 @@ function getPaths(ways) {
 						return;
 					} else {
 						var weight = distBetween2Points(current[1], current[0], next[1], next[0]);
-						if(weight ===0){
-							console.log("ZERO")
-						}
+						
 						AdjList.get(currentRef).set(nextRef, weight);
 						AdjList.get(nextRef).set(currentRef, weight);
 					}
@@ -171,8 +169,7 @@ function getPaths(ways) {
 		EndNodes.push({ id: startID, lngLat: Nodes[startID].lngLat });
 		EndNodes.push({ id: endID, lngLat: Nodes[endID].lngLat });
 	});
-	console.log(result);
-	console.log(Nodes);
+
 
 	// _.remove(ways, (path) => {
 	// 	if (_.find(path.tag, (child) => child._attributes.k === "highway")) {

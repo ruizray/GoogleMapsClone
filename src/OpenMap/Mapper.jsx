@@ -50,17 +50,21 @@ const Mapper = () => {
 	// }, [AdjList]);
 
 	useEffect(() => {
-	
-		if ( Nodes) {
-			console.log(Object.keys(Nodes).length)
-			var building = _.remove(Nodes, (node) => {
-		console.log(node)
+		if (Nodes) {
+			console.log(Object.keys(Nodes).length);
+			var building = _.filter(Nodes, (node) => {
 				if (node.building) {
-					console.log(node.building);
 					return node;
 				}
 			});
-			console.log(Object.keys(Nodes).length)
+			setBuildings(building);
+			var paths = _.filter(Nodes, (node) => {
+				if (node.highway) {
+					return node;
+				}
+			});
+			console.log(building, paths);
+			console.log(Object.keys(Nodes).length);
 		}
 		// 		var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
 		// 		var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
@@ -77,7 +81,17 @@ const Mapper = () => {
 		// 			setCoordinates(coordinates);
 		// 		}
 		// 	}
-	}, [ Nodes]);
+	}, [Nodes]);
+
+	useEffect(() => {
+		if (Buildings) {
+			var building = _.filter(Nodes, (node) => {
+				if (node.building) {
+					return node;
+				}
+			});
+		}
+	}, [Buildings]);
 
 	const handleToClick = (event, index) => {
 		console.log(index, event);
@@ -156,6 +170,7 @@ const Mapper = () => {
 
 	const handleNodeHover = (e, coordinate) => {
 		if (coordinate) {
+			console.log(coordinate)
 			var temp = Array.from(AdjList.get(coordinate).keys());
 			var temp2 = temp.map((nodeId) => {
 				return Nodes[nodeId].lngLat;
@@ -183,7 +198,7 @@ const Mapper = () => {
 				onDragEnd={(map, e) => handleDragEnd(map, e)}>
 				<Source id='route' geoJsonSource={list} />
 
-				{Nodes && (
+				{/* {Nodes && (
 					<Layer
 						id='hello'
 						type='circle'
@@ -200,6 +215,31 @@ const Mapper = () => {
 									coordinates={Nodes[key].lngLat}
 								/>
 							);
+						})}
+					</Layer>
+				)} */}
+
+				{Nodes && (
+					<Layer
+						id='hello'
+						type='circle'
+						paint={{
+							"circle-radius": 7,
+							"circle-color": "black",
+						}}>
+						{Object.keys(Nodes).map((key) => {
+							if (Nodes[key].building) {
+								return (
+									<Feature
+										key={Nodes[key].lngLat}
+										onMouseEnter={(e) => handleNodeHover(e, key)}
+										onMouseLeave={(e) => handleNodeHoverLeave(e, key)}
+										coordinates={Nodes[key].lngLat}
+									/>
+								);
+							
+							}
+							return <Feature coordinates={[0,0]}/>
 						})}
 					</Layer>
 				)}
