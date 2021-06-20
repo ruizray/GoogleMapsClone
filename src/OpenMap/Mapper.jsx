@@ -9,7 +9,7 @@ import List from "@material-ui/core/List";
 import ListItem from "@material-ui/core/ListItem";
 import ListItemText from "@material-ui/core/ListItemText";
 import { getNearestNode, returnValues } from "./../scripts/mapper";
-import _ from "lodash";
+import _, { partialRight } from "lodash";
 
 const Map = ReactMapboxGl({
 	accessToken: "pk.eyJ1IjoicnVpenJheSIsImEiOiJja29naXN5ZTEwcmpyMm9ucnBoaW90bzBiIn0._TowTB5Zp7nGWcPPnGMoUQ",
@@ -23,14 +23,16 @@ const useStyles = makeStyles((theme) => ({
 		overflow: "scroll",
 		maxHeight: "300px",
 	},
+	formControl: {
+		margin: theme.spacing(3),
+	},
 }));
 
 const Mapper = () => {
 	const classes = useStyles();
 	const [From, setFrom] = useState();
-	const [lng, setLng] = useState(-87.647374);
-	const [lat, setLat] = useState(41.865794);
-	const [center, setCenter] = useState([lng, lat]);
+	const [Bounds, setBounds] = useState();
+	const [center, setCenter] = useState([-87.647374, 41.865794]);
 	const [zoom, setZoom] = useState(15);
 	const [Nodes, setNodes] = useState();
 	const [Buildings, setBuildings] = useState();
@@ -42,56 +44,45 @@ const Mapper = () => {
 	const [popupCoordinates, setPopupCoordinates] = useState([0, 0]);
 	const [nearestCoordinates, setNearestCoordinates] = useState([[0, 0]]);
 	const [Paths, setPaths] = useState();
-	const [PathNodes, setPathNodes] = useState();
-	// useEffect(() => {
-	// 	if (AdjList) {
-	// 		setNodesGraph(new Graph(AdjList));
-	// 	}
-	// }, [AdjList]);
+	const [highWayNodes, setHighwayNodes] = useState();
+	const [popupBody, setPopupBody] = useState();
 
 	useEffect(() => {
-		if (Nodes) {
-			console.log(Object.keys(Nodes).length);
-			var building = _.filter(Nodes, (node) => {
-				if (node.building) {
-					return node;
-				}
-			});
-			setBuildings(building);
-			var paths = _.filter(Nodes, (node) => {
-				if (node.highway) {
-					return node;
-				}
-			});
-			console.log(building, paths);
-			console.log(Object.keys(Nodes).length);
+		if (AdjList) {
+			setNodesGraph(new Graph(AdjList));
 		}
-		// 		var id1 = getNearestNode(To, PointNodes, Buildings, Nodes);
-		// 		var id2 = getNearestNode(From, PointNodes, Buildings, Nodes);
-		// 		var coordinates = [];
-		// 		var path = NodesGraph.path(id1, id2, { cost: true });
-		// 		console.log(path)
-		// 		if (!path.path || !path) {
-		// 			alert("No Path Found");
-		// 		} else {
-		// 			for (var i = 0; i < path.path.length; i++) {
-		// 				coordinates.push(Nodes[path.path[i]].lngLat);
-		// 			}
-		// 			console.log(coordinates);
-		// 			setCoordinates(coordinates);
-		// 		}
-		// 	}
-	}, [Nodes]);
+	}, [AdjList]);
 
 	useEffect(() => {
-		if (Buildings) {
-			var building = _.filter(Nodes, (node) => {
-				if (node.building) {
-					return node;
+		if (Paths) {
+			var temp = _.filter(Paths, (path) => {
+				if (path.attributes.highway) {
+					return path;
 				}
 			});
+			console.log(temp);
+			setHighwayNodes(temp);
 		}
-	}, [Buildings]);
+	}, [Paths]);
+
+	useEffect(() => {
+		if (Buildings && To && PointNodes && From && NodesGraph) {
+			var id1 = getNearestNode(To, PointNodes, Buildings);
+			var id2 = getNearestNode(From, PointNodes, Buildings);
+			var coordinates = [];
+			var path = NodesGraph.path(id1, id2, { cost: true });
+
+			if (!path.path || !path) {
+				alert("No Path Found");
+			} else {
+				for (var i = 0; i < path.path.length; i++) {
+					coordinates.push(Nodes[path.path[i]].lngLat);
+				}
+
+				setCoordinates(coordinates);
+			}
+		}
+	}, [Buildings, To, PointNodes, From, NodesGraph]);
 
 	const handleToClick = (event, index) => {
 		console.log(index, event);
@@ -99,6 +90,7 @@ const Mapper = () => {
 	};
 	const handleFromClick = (event, index) => {
 		console.log(index, event);
+		setPopupCoordinates([0, 0]);
 		setFrom(index);
 	};
 
@@ -107,26 +99,20 @@ const Mapper = () => {
 	};
 
 	const getNodesList = async () => {
-		const [Nodes, EndPoints, Buildings, AdjList, Center, Paths] = await returnValues();
-		console.log(Nodes, EndPoints, Buildings, AdjList, Center, Paths);
+		const [Nodes, EndPoints, Buildings, AdjList, Bounds, Paths] = await returnValues();
+		console.log(Nodes, EndPoints, Buildings, AdjList, Bounds, Paths);
 		setNodes(Nodes);
-		setCenter(Center);
-		console.log(AdjList);
-		// setBuildings(Buildings);
+		setCenter(Bounds.center);
+		setBuildings(Buildings);
+		setPaths(Paths);
+		setBounds(Bounds.bounds);
 		setAdjList(AdjList);
-		// setPointNodes(EndPoints);
-
-		// setPaths(Paths);
+		setPointNodes(EndPoints);
 	};
 
-	const handleSliderChange = (event, newValue) => {
-		setZoom(newValue);
-		console.log(zoom);
-	};
 	const handleDragEnd = (map, e) => {
 		var center = map.getCenter();
-		setLat(center.lat);
-		setLng(center.lng);
+		setCenter(center);
 		setZoom([map.getZoom()]);
 	};
 
@@ -146,10 +132,12 @@ const Mapper = () => {
 		if (!Buildings) {
 			return;
 		}
-		return Object.keys(Buildings).map((key, value) => {
+		return Buildings.map((building, index) => {
+			var buildingName = building.name || building.building;
+
 			return (
-				<ListItem key={key} button selected={From === key} onClick={(event) => handleFromClick(event, key)}>
-					<ListItemText primary={key} />
+				<ListItem key={"buildingFrom" + index} button selected={From === buildingName} onClick={(event) => handleFromClick(event, building)}>
+					<ListItemText primary={buildingName} />
 				</ListItem>
 			);
 		});
@@ -159,32 +147,51 @@ const Mapper = () => {
 		if (!Buildings) {
 			return;
 		}
-		return Object.keys(Buildings).map((key, value) => {
+		return Buildings.map((building, index) => {
+			var buildingName = building.name || building.building;
+
 			return (
-				<ListItem key={key} button selected={To === key} onClick={(event) => handleToClick(event, key)}>
-					<ListItemText primary={key} />
+				<ListItem key={"buildingTo" + index} button selected={From === buildingName} onClick={(event) => handleToClick(event, building)}>
+					<ListItemText primary={buildingName} />
 				</ListItem>
 			);
 		});
 	};
 
+	const handleBuildingHover = (e, building) => {
+		if (building) {
+			setPopupCoordinates(building.lngLat);
+			setPopupBody(
+				<List component='nav' aria-label='main mailbox folders'>
+					<ListItem style={{ cursor: "pointer" }} onClick={(event) => handleFromClick(event, building)}>
+						<ListItemText primary='From' />
+					</ListItem>
+					<ListItem style={{ cursor: "pointer" }} onClick={(event) => handleToClick(event, building)}>
+						<ListItemText primary='To' />
+					</ListItem>
+				</List>
+			);
+		}
+	};
+	const handleBuildingHoverLeave = (e, coordinate) => {
+		setNearestCoordinates([0, 0]);
+	};
 	const handleNodeHover = (e, coordinate) => {
 		if (coordinate) {
-			console.log(coordinate)
+			console.log(coordinate);
 			var temp = Array.from(AdjList.get(coordinate).keys());
 			var temp2 = temp.map((nodeId) => {
 				return Nodes[nodeId].lngLat;
 			});
 			temp2 = [...temp2, Nodes[coordinate].lngLat];
 			setNearestCoordinates(temp2);
-			setPopupCoordinates(Nodes[coordinate].lngLat);
 		}
 	};
 	const handleNodeHoverLeave = (e, coordinate) => {
 		setPopupCoordinates([0, 0]);
 		setNearestCoordinates([0, 0]);
 	};
-
+	console.log("map redraw");
 	return (
 		<div>
 			<Map
@@ -195,51 +202,48 @@ const Mapper = () => {
 				}}
 				zoom={[zoom]}
 				center={center}
-				onDragEnd={(map, e) => handleDragEnd(map, e)}>
+				fitBounds={Bounds}
+				onDragEnd={(map, e) => handleDragEnd(map, e)}
+				onClick={(map,e) => handleNodeHoverLeave(map,e)}>
+				
 				<Source id='route' geoJsonSource={list} />
-
-				{/* {Nodes && (
-					<Layer
-						id='hello'
-						type='circle'
-						paint={{
-							"circle-radius": 7,
-							"circle-color": "black",
-						}}>
-						{Object.keys(Nodes).map((key) => {
+				<Layer
+					id='Highways'
+					type='line'
+					paint={{
+						"line-width": 1,
+						"line-color": "black",
+					}}>
+					{highWayNodes &&
+						highWayNodes.map((highway, index) => {
 							return (
 								<Feature
-									key={Nodes[key].lngLat}
-									onMouseEnter={(e) => handleNodeHover(e, key)}
-									onMouseLeave={(e) => handleNodeHoverLeave(e, key)}
-									coordinates={Nodes[key].lngLat}
+									key={"highway" + index}
+									coordinates={highway.coordinates.map((coordinate, index) => {
+										return coordinate.lngLat;
+									})}
 								/>
 							);
 						})}
-					</Layer>
-				)} */}
-
-				{Nodes && (
+				</Layer>
+				{Buildings && (
 					<Layer
 						id='hello'
 						type='circle'
 						paint={{
 							"circle-radius": 7,
-							"circle-color": "black",
+							"circle-color": "red",
 						}}>
-						{Object.keys(Nodes).map((key) => {
-							if (Nodes[key].building) {
-								return (
-									<Feature
-										key={Nodes[key].lngLat}
-										onMouseEnter={(e) => handleNodeHover(e, key)}
-										onMouseLeave={(e) => handleNodeHoverLeave(e, key)}
-										coordinates={Nodes[key].lngLat}
-									/>
-								);
-							
-							}
-							return <Feature coordinates={[0,0]}/>
+						{Buildings.map((building, index) => {
+							return (
+								<Feature
+									key={"building" + index}
+									onMouseEnter={(e) => handleBuildingHover(e, building)}
+									onMouseLeave={(e) => handleBuildingHoverLeave(e, building)}
+									onClick={(event) => handleFromClick(event, building)}
+									coordinates={building.lngLat}
+								/>
+							);
 						})}
 					</Layer>
 				)}
@@ -261,22 +265,14 @@ const Mapper = () => {
 					id='route2'
 					type='circle'
 					paint={{
-						"circle-color": "red",
+						"circle-color": "green",
 						"circle-radius": 10,
 					}}>
 					{Coordinates.map((coordinate1, index) => (
 						<Feature key={"K" + index} coordinates={coordinate1} />
 					))}
 				</Layer>
-				<Popup
-					coordinates={popupCoordinates}
-					offset={{
-						"bottom-left": [12, -38],
-						bottom: [0, -38],
-						"bottom-right": [-12, -38],
-					}}>
-					<h1>{"[ " + popupCoordinates[0] + " , " + popupCoordinates[1] + "]"}</h1>
-				</Popup>
+
 				<Layer
 					id='route3'
 					type='line'
@@ -288,6 +284,27 @@ const Mapper = () => {
 						"line-width": 3,
 						"line-dasharray": [0, 2],
 					}}></Layer>
+				<Popup
+					coordinates={popupCoordinates}
+					offset={{
+						"bottom-left": [12, -38],
+						bottom: [0, -38],
+						"bottom-right": [-12, -38],
+					}}>
+					{popupBody}
+				</Popup>
+				<Layer
+					id='route3'
+					type='line'
+					sourceId='route'
+					layout={{
+						"line-cap": "round",
+					}}
+					paint={{
+						"line-width": 3,
+						"line-dasharray": [0, 2],
+						"line-color": "blue",
+					}}></Layer>
 			</Map>
 
 			<form>
@@ -298,20 +315,6 @@ const Mapper = () => {
 			</form>
 			<Button onClick={() => getNodesList()}>Click Here</Button>
 
-			<Typography id='discrete-slider' gutterBottom>
-				Zoom Level
-			</Typography>
-			<Slider
-				value={zoom}
-				onChangeCommitted={handleSliderChange}
-				aria-labelledby='discrete-slider'
-				valueLabelDisplay='auto'
-				step={1}
-				defaultValue={zoom}
-				marks
-				min={1}
-				max={22}
-			/>
 			<div className='row'>
 				<div className='col-md-6'>
 					<div className={classes.root}>

@@ -2,20 +2,22 @@ const txml = require("txml");
 var _ = require("lodash");
 
 var parsed;
-var center = [];
+var Bounds;
 var Nodes = {};
 var Paths = {};
 var EndNodes = [];
-var buildings = {};
-
+var Buildings = [];
+var Paths = [];
 var AdjList = new Map();
 
 export async function returnValues() {
-	return [Nodes, EndNodes, buildings, AdjList, center, Paths];
+	console.log(Buildings);
+	console.log(Paths);
+	return [Nodes, EndNodes, Buildings, AdjList, Bounds, Paths];
 }
 
 function getBuildings(ways) {
-	 _.remove(ways, (way) => {
+	_.remove(ways, (way) => {
 		if (_.find(way.tag, (child) => child._attributes.k === "building")) {
 			var obj = {};
 			_.forEach(way.tag, (child) => {
@@ -23,30 +25,30 @@ function getBuildings(ways) {
 				temp[child._attributes.k] = child._attributes.v;
 				_.assign(obj, temp);
 			});
-
+			if (!obj.name) {
+				return way;
+			}
 			var totalLong = 0;
-					var totalLat = 0;
-					var totalNodes = 0;
-					var id = way._attributes.id;
-					_.forEach(way.nd, (nd) => {
-						var tempNode = Nodes[nd._attributes.ref];
-						totalLat = +tempNode.lngLat[1] + totalLat;
-						totalLong = +tempNode.lngLat[0] + totalLong;
-						totalNodes++;
-			
-					});
-					var lat = totalLat / totalNodes;
-					var long = totalLong / totalNodes;
-					var name = obj.name
-		
-					Nodes[name]={}
-				
-					_.assign(Nodes[name], obj, {lngLat : [long,lat]});
-			return way
+			var totalLat = 0;
+			var totalNodes = 0;
+			var id = way._attributes.id;
+			_.forEach(way.nd, (nd) => {
+				var tempNode = Nodes[nd._attributes.ref];
+				totalLat = +tempNode.lngLat[1] + totalLat;
+				totalLong = +tempNode.lngLat[0] + totalLong;
+				totalNodes++;
+			});
+			var lat = totalLat / totalNodes;
+			var long = totalLong / totalNodes;
+			var name = obj.name;
+
+			Nodes[id] = {};
+
+			_.assign(Nodes[id], obj, { lngLat: [long, lat] });
+			Buildings.push(Nodes[id]);
+			return way;
 		}
 	});
-
-
 
 	// _.remove(ways, (elem) => {
 	// 	if (_.find(elem.tag, (child) => child._attributes.k === "building")) {
@@ -74,22 +76,22 @@ function getBuildings(ways) {
 	// });
 }
 function getNodes(nodes) {
-	 _.forEach(nodes, (node) => {
-		var obj = { lngLat: [+node._attributes.lon, +node._attributes.lat] };
-		var name = _.find(node.tag, (child) => child._attributes.k === "name") 
-			if(name){
-				console.log(name)
-				 _.assign(obj, {name:name._attributes.v , building:true } )
-			}
-		
-		AdjList.set(node._attributes.id, new Map());
+	_.forEach(nodes, (node) => {
+		var obj = { id: node._attributes.id, lngLat: [+node._attributes.lon, +node._attributes.lat] };
+var temp=new Map()
+		AdjList.set(node._attributes.id, temp);
 		_.forEach(node.tag, (child) => {
 			var temp = {};
 			temp[child._attributes.k] = child._attributes.v;
-
+			if (child._attributes.k === "name") {
+				_.assign(obj, { name: child._attributes.v, building: true });
+			}
 			_.assign(obj, temp);
 		});
-		
+		if (obj.name) {
+			console.log(obj);
+			Buildings.push(obj);
+		}
 		Nodes[node._attributes.id] = obj;
 	});
 
@@ -112,12 +114,12 @@ function getNodes(nodes) {
 	// 	Nodes[node._attributes.id] = { name: temp, lngLat: [+node._attributes.lon, +node._attributes.lat] };
 	// });
 }
-function addOneway(path, obj) {
+function addOneway(path, obj, coordinates) {
 	_.forEach(path, (node, index) => {
 		var currentRef = node._attributes.ref;
 		_.assign(Nodes[currentRef], obj);
 		var current = Nodes[currentRef].lngLat;
-
+		coordinates.push({ id: currentRef, lngLat: current });
 		if (path[index + 1]) {
 			var nextRef = path[index + 1]._attributes.ref;
 			var next = Nodes[nextRef].lngLat;
@@ -125,16 +127,15 @@ function addOneway(path, obj) {
 				return;
 			} else {
 				var weight = distBetween2Points(current[1], current[0], next[1], next[0]);
-				
+
 				AdjList.get(currentRef).set(nextRef, weight);
 			}
 		}
 
-		AdjList.get(currentRef).set(nextRef, weight);
+
 	});
 }
 function getPaths(ways) {
-	
 	var result = _.forEach(ways, (path) => {
 		var obj = {};
 		_.forEach(path.tag, (child) => {
@@ -142,13 +143,15 @@ function getPaths(ways) {
 			temp[child._attributes.k] = child._attributes.v;
 			_.assign(obj, temp);
 		});
+		var coordinates = [];
 		if (obj.oneway) {
-			addOneway(path.nd, obj);
+			addOneway(path.nd, obj, coordinates);
 		} else {
 			_.forEach(path.nd, (nd, index) => {
 				var currentRef = nd._attributes.ref;
 				_.assign(Nodes[currentRef], obj);
 				var current = Nodes[currentRef].lngLat;
+				coordinates.push({ id: currentRef, lngLat: current });
 				if (path.nd[index + 1]) {
 					var nextRef = path.nd[index + 1]._attributes.ref;
 					var next = Nodes[nextRef].lngLat;
@@ -156,7 +159,7 @@ function getPaths(ways) {
 						return;
 					} else {
 						var weight = distBetween2Points(current[1], current[0], next[1], next[0]);
-						
+
 						AdjList.get(currentRef).set(nextRef, weight);
 						AdjList.get(nextRef).set(currentRef, weight);
 					}
@@ -164,12 +167,12 @@ function getPaths(ways) {
 			});
 		}
 
+		Paths.push({ id: path._attributes.id, attributes: obj, coordinates: [...coordinates] });
 		var startID = path.nd[0]._attributes.ref;
 		var endID = path.nd[path.nd.length - 1]._attributes.ref;
 		EndNodes.push({ id: startID, lngLat: Nodes[startID].lngLat });
 		EndNodes.push({ id: endID, lngLat: Nodes[endID].lngLat });
 	});
-
 
 	// _.remove(ways, (path) => {
 	// 	if (_.find(path.tag, (child) => child._attributes.k === "highway")) {
@@ -255,8 +258,15 @@ function getBounds(bounds) {
 
 	var midLat = (+maxLat + +minLat) / 2;
 	var midLon = (+maxLon + +minLon) / 2;
-	center = [midLon, midLat];
-
+	var center = [midLon, midLat];
+	var multiplier = 0.01;
+	Bounds = {
+		center,
+		bounds: [
+			[+minLon, +minLat],
+			[+maxLon, +maxLat],
+		],
+	};
 	console.log(center);
 }
 
@@ -265,8 +275,8 @@ export function getNearestNode(building, tempPointNodes, tempBuildings, tempNode
 	var nearest = Number.MAX_SAFE_INTEGER;
 	for (var i = 0; i < tempPointNodes.length; i++) {
 		var dist = distBetween2Points(
-			tempBuildings[building].lngLat[1],
-			tempBuildings[building].lngLat[0],
+			building.lngLat[1],
+			building.lngLat[0],
 			tempPointNodes[i].lngLat[1],
 			tempPointNodes[i].lngLat[0]
 		);
