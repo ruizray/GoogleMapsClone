@@ -14,15 +14,14 @@ import MenuIcon from "@material-ui/icons/Menu";
 import ChevronLeftIcon from "@material-ui/icons/ChevronLeft";
 import ChevronRightIcon from "@material-ui/icons/ChevronRight";
 import ListItem from "@material-ui/core/ListItem";
-import ListItemIcon from "@material-ui/core/ListItemIcon";
-import ListItemText from "@material-ui/core/ListItemText";
-import InboxIcon from "@material-ui/icons/MoveToInbox";
-import MailIcon from "@material-ui/icons/Mail";
 
-import { Route, Redirect, NavLink } from "react-router-dom";
+import ListItemText from "@material-ui/core/ListItemText";
+
+import { Route, NavLink } from "react-router-dom";
 import Login from "../Authentication/Login";
 import Register from "./../Authentication/Register";
-import Mapper from './../OpenMap/Mapper';
+import Mapper from "./../OpenMap/Mapper";
+import ThreeTest from "../3D/ThreeTest";
 
 const drawerWidth = 240;
 
@@ -131,14 +130,14 @@ export default function Dashboard() {
 				</div>
 				<Divider />
 				<List>
-					<NavLink className='nav-link' to ="/mapper">
-						<ListItem button >
+					<NavLink className='nav-link' to='/mapper'>
+						<ListItem button>
 							<ListItemText primary={"Mapper"} />
 						</ListItem>
 					</NavLink>
-          <NavLink className='nav-link' to ="/login">
-						<ListItem button >
-							<ListItemText primary={"Login"} />
+					<NavLink className='nav-link' to='/3d'>
+						<ListItem button>
+							<ListItemText primary={"3D Test"} />
 						</ListItem>
 					</NavLink>
 				</List>
@@ -150,12 +149,10 @@ export default function Dashboard() {
 				})}>
 				<div className={classes.drawerHeader} />
 
-
-        <Route exact path='/mapper' component={Mapper} />
-		
+				<Route exact path='/mapper' component={Mapper} />
+				<Route exact path='/3D' component={ThreeTest} />
 				<Route exact path='/login' component={Login} />
 				<Route exact path='/register' component={Register} />
-			
 			</main>
 		</div>
 	);

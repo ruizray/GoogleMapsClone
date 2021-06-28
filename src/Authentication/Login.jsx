@@ -1,10 +1,9 @@
-import React, { useState, useEffect } from "react";
+import React, { useState} from "react";
 import Avatar from "@material-ui/core/Avatar";
 import Button from "@material-ui/core/Button";
 import CssBaseline from "@material-ui/core/CssBaseline";
 import TextField from "@material-ui/core/TextField";
-import FormControlLabel from "@material-ui/core/FormControlLabel";
-import Checkbox from "@material-ui/core/Checkbox";
+
 import Link from "@material-ui/core/Link";
 import Grid from "@material-ui/core/Grid";
 import Box from "@material-ui/core/Box";
@@ -74,17 +73,17 @@ const Login = props => {
 		return error ? error.details[0].message : null;
 	};
 
-	const handleSubmit = (e) => {
-		e.preventDefault();
-		console.log(e);
-		const errors = validate();
-		console.log(errors);
-		console.log(formErrors);
-		setFormErrors(errors || {});
+	// const handleSubmit = (e) => {
+	// 	e.preventDefault();
+	// 	console.log(e);
+	// 	const errors = validate();
+	// 	console.log(errors);
+	// 	console.log(formErrors);
+	// 	setFormErrors(errors || {});
 
-		if (errors) return;
-		console.log("Here");
-	};
+	// 	if (errors) return;
+	// 	console.log("Here");
+	// };
 
 	const handleChange = ({ currentTarget: input }) => {
 		const errors = { ...formErrors };

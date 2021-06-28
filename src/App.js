@@ -1,14 +1,13 @@
-import Login from "./Authentication/Login";
+// import Login from "./Authentication/Login";
 
-import { useState } from "react";
-import Register from "./Authentication/Register";
-import { Route, NavLink, Router, Switch, Redirect } from "react-router-dom";
-import Dashboard from './Dashboard/Dashboard';
+// import { useState } from "react";
+// import Register from "./Authentication/Register";
+// import { Route, NavLink, Router, Switch, Redirect } from "react-router-dom";
+import Dashboard from "./Dashboard/Dashboard";
 function App() {
 	return (
 		<>
-
-		<Dashboard></Dashboard>
+			<Dashboard></Dashboard>
 			{/* <Route exact path='/'>
 				<Redirect to='/dashboard' />
 			</Route>
